@@ -1,112 +1,96 @@
 <template>
-  <div class="dashboard">
-    <!-- 欢迎横幅 -->
-    <div class="welcome-banner">
-      <div class="welcome-left">
-        <div class="welcome-greeting">
-          <span class="welcome-emoji">👋</span>
-          <span>{{ greeting }}</span>
-        </div>
-        <h1 class="welcome-name">{{ userStore.user?.realName || '用户' }}</h1>
-        <p class="welcome-date">{{ today }} · 祝您工作愉快</p>
+  <div class="swiss-dashboard">
+    <section class="hero-section glass-panel fixed-section">
+      <div class="hero-content">
+        <h1 class="hero-greeting">{{ greeting }} <span class="hero-name">{{ userStore.user?.realName || '用户' }}</span></h1>
+        <p class="hero-date">{{ today }} · 环保监测网络运行良好</p>
       </div>
-      <div class="welcome-right">
-        <div class="weather-card">
-          <div class="weather-icon">🌤️</div>
-          <div class="weather-info">
-            <div class="weather-temp">空气质量监测中</div>
-            <div class="weather-desc">全国 29 省 · 106 城网格覆盖</div>
-          </div>
+      <div class="hero-status">
+        <div class="status-icon-ring">
+          <el-icon><Odometer /></el-icon>
+        </div>
+        <div class="status-info">
+          <div class="status-title">实时监测中</div>
+          <div class="status-subtitle">已覆盖全国 106 座城市</div>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- 统计卡片 -->
-    <el-row :gutter="20" class="stats-row">
-      <el-col :span="6" v-for="card in statCards" :key="card.label">
-        <div class="stat-card" :style="{ '--card-color': card.color }">
-          <div class="stat-body">
-            <div class="stat-main">
-              <div class="stat-number">
-                <span ref="countRefs" class="count-num">{{ card.value }}</span>
-                <span class="count-unit">{{ card.unit }}</span>
-              </div>
-              <div class="stat-label">{{ card.label }}</div>
-            </div>
-            <div class="stat-icon-box" :style="{ background: card.color }">
-              <el-icon :size="26" color="#fff"><component :is="card.icon" /></el-icon>
-            </div>
-          </div>
-          <div class="stat-footer">
-            <span class="stat-trend" :class="card.trend > 0 ? 'up' : 'down'">
-              <el-icon><component :is="card.trend > 0 ? 'Top' : 'Bottom'" /></el-icon>
-              {{ Math.abs(card.trend) }}%
-            </span>
-            <span class="stat-compare">较上周</span>
+    <section class="stats-grid fixed-section">
+      <div class="stat-glass-card" v-for="card in statCards" :key="card.label">
+        <div class="stat-header">
+          <span class="stat-label">{{ card.label }}</span>
+          <div class="stat-icon-wrapper">
+            <el-icon><component :is="card.icon" /></el-icon>
           </div>
         </div>
-      </el-col>
-    </el-row>
-
-    <!-- 快捷操作 + 最新反馈 -->
-    <el-row :gutter="20">
-      <el-col :span="10">
-        <div class="quick-card">
-          <div class="card-header">
-            <h3>快捷操作</h3>
-          </div>
-          <div class="quick-grid">
-            <div class="quick-item" v-for="act in quickActions" :key="act.label" @click="$router.push(act.path)">
-              <div class="quick-icon" :style="{ background: act.bg }">
-                <el-icon :size="24" :color="act.color"><component :is="act.icon" /></el-icon>
-              </div>
-              <div class="quick-info">
-                <div class="quick-name">{{ act.label }}</div>
-                <div class="quick-desc">{{ act.desc }}</div>
-              </div>
-              <el-icon class="quick-arrow" color="#ccc"><ArrowRight /></el-icon>
-            </div>
+        <div class="stat-body">
+          <div class="stat-value">
+            <span class="value-number">{{ card.value }}</span>
+            <span class="value-unit">{{ card.unit }}</span>
           </div>
         </div>
-      </el-col>
-
-      <el-col :span="14">
-        <div class="feedback-card">
-          <div class="card-header">
-            <h3>最新监督反馈</h3>
-            <el-button text type="primary" @click="$router.push('/feedback')">查看全部 <el-icon><ArrowRight /></el-icon></el-button>
+        <div class="stat-footer">
+          <div class="trend-indicator" :class="card.trend > 0 ? 'is-positive' : 'is-negative'">
+            <el-icon><component :is="card.trend > 0 ? 'TopRight' : 'BottomRight'" /></el-icon>
+            <span>{{ Math.abs(card.trend) }}%</span>
           </div>
-          <div class="feedback-list" v-loading="feedLoading">
-            <div
-              class="feedback-item"
-              v-for="fb in recentFeedbacks"
-              :key="fb.id"
-              @click="$router.push('/feedback')"
-            >
-              <div class="fb-left">
-                <div class="fb-avatar" :class="'aqi-'+fb.estimatedAqiLevel">
-                  {{ fb.estimatedAqiLevel }}
-                </div>
-              </div>
-              <div class="fb-center">
-                <div class="fb-address">
-                  <el-icon><Location /></el-icon>
-                  {{ fb.specificAddress || '网格区域 #' + fb.cityId }}
-                </div>
-                <div class="fb-desc">{{ fb.description || '空气质量监督反馈' }}</div>
-              </div>
-              <div class="fb-right">
-                <el-tag :type="statusType(fb.status)" size="small" effect="dark" round>
-                  {{ statusLabel(fb.status) }}
-                </el-tag>
-                <div class="fb-time">{{ formatTime(fb.createTime) }}</div>
-              </div>
-            </div>
-            <el-empty v-if="!feedLoading && recentFeedbacks.length === 0" description="暂无反馈数据" :image-size="80" />
+          <span class="trend-context">较上周对比</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="content-split-grid stretch-section">
+      
+      <div class="action-bento glass-panel scrollable-card">
+        <div class="panel-header">
+          <h3 class="panel-title">快捷操作</h3>
+        </div>
+        <div class="bento-grid scroll-area">
+          <div class="bento-item" v-for="act in quickActions" :key="act.label" @click="$router.push(act.path)">
+            <div class="bento-icon"><el-icon><component :is="act.icon" /></el-icon></div>
+            <span class="bento-label">{{ act.label }}</span>
           </div>
         </div>
-      </el-col>
-    </el-row>
+      </div>
+
+      <div class="feedback-stream glass-panel scrollable-card">
+        <div class="panel-header">
+          <h3 class="panel-title">最新监督反馈</h3>
+          <button class="text-link-btn" @click="$router.push('/feedback')">
+            查看全部 <el-icon><ArrowRight /></el-icon>
+          </button>
+        </div>
+        <div class="stream-list scroll-area" v-loading="feedLoading">
+          <div
+            class="stream-item"
+            v-for="fb in recentFeedbacks"
+            :key="fb.id"
+            @click="$router.push('/feedback')"
+          >
+            <div class="aqi-indicator" :class="'aqi-level-' + fb.estimatedAqiLevel">
+               <div class="aqi-dot"></div>
+            </div>
+            
+            <div class="stream-content">
+              <div class="stream-desc">{{ fb.description || '常规空气质量记录' }}</div>
+              <div class="stream-meta">
+                <el-icon><LocationInformation /></el-icon>
+                <span>{{ fb.specificAddress || '网格区域 #' + fb.cityId }}</span>
+              </div>
+            </div>
+
+            <div class="stream-status">
+              <span class="status-pill" :class="'status-' + fb.status.toLowerCase()">
+                {{ statusLabel(fb.status) }}
+              </span>
+              <span class="stream-time">{{ formatTime(fb.createTime) }}</span>
+            </div>
+          </div>
+          <el-empty v-if="!feedLoading && recentFeedbacks.length === 0" description="暂无最新反馈" :image-size="60" />
+        </div>
+      </div>
+    </section>
   </div>
 </template>
 
@@ -114,12 +98,16 @@
 import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { getFeedbackPage } from '@/api/feedback'
+import { 
+  User, DataAnalysis, CircleCheck, Location, ArrowRight,
+  TopRight, BottomRight, Odometer, LocationInformation,
+  EditPen, Document, ChatDotRound, PieChart, Setting
+} from '@element-plus/icons-vue'
 
 const userStore = useUserStore()
 const feedLoading = ref(false)
 const recentFeedbacks = ref([])
 
-// 问候语
 const greeting = computed(() => {
   const h = new Date().getHours()
   if (h < 6) return '夜深了，'
@@ -131,31 +119,25 @@ const greeting = computed(() => {
 
 const today = computed(() => {
   return new Date().toLocaleDateString('zh-CN', {
-    year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
+    month: 'long', day: 'numeric', weekday: 'long'
   })
 })
 
-// 统计卡片
 const statCards = ref([
-  { label: '公众监督员', value: '12,846', unit: '人', color: '#409EFF', icon: 'User', trend: 12 },
-  { label: 'AQI检测总数', value: '35,862', unit: '次', color: '#0c8c3f', icon: 'DataAnalysis', trend: 8 },
-  { label: '反馈处理率', value: '87.5', unit: '%', color: '#E6A23C', icon: 'CircleCheck', trend: -3 },
-  { label: '覆盖城市', value: '106', unit: '座', color: '#F56C6C', icon: 'Location', trend: 15 },
+  { label: '公众监督员', value: '12,846', unit: '人', icon: User, trend: 12 },
+  { label: 'AQI 监测总数', value: '35,862', unit: '次', icon: DataAnalysis, trend: 8 },
+  { label: '反馈处理率', value: '87.5', unit: '%', icon: CircleCheck, trend: -3 },
+  { label: '覆盖城市', value: '106', unit: '座', icon: Location, trend: 15 },
 ])
 
-// 快捷操作
 const quickActions = [
-  { label: '提交反馈', desc: '上报空气质量信息', icon: 'EditPen', color: '#409EFF', bg: '#ecf5ff', path: '/feedback/submit' },
-  { label: '反馈列表', desc: '查看历史记录', icon: 'Document', color: '#0c8c3f', bg: '#e8f5e9', path: '/feedback' },
-  { label: 'AI助手', desc: '智能问答分析', icon: 'ChatDotRound', color: '#9b59b6', bg: '#f3e5f5', path: '/ai' },
-  { label: '数据统计', desc: '查看统计大盘', icon: 'PieChart', color: '#E6A23C', bg: '#fdf6ec', path: '/statistics' },
-  { label: '个人中心', desc: '管理账户信息', icon: 'User', color: '#F56C6C', bg: '#fef0f0', path: '/profile' },
-  { label: '管理后台', desc: '系统管理端', icon: 'Setting', color: '#303133', bg: '#f4f4f5', path: '/admin/dashboard' },
+  { label: '提交反馈', icon: EditPen, path: '/feedback/submit' },
+  { label: '反馈列表', icon: Document, path: '/feedback' },
+  { label: 'AI 助手', icon: ChatDotRound, path: '/ai' },
+  { label: '数据大盘', icon: PieChart, path: '/statistics' },
+  { label: '个人中心', icon: User, path: '/profile' },
+  { label: '管理后台', icon: Setting, path: '/admin/dashboard' },
 ]
-
-function statusType(s) {
-  return s === 'PENDING' ? 'warning' : s === 'ASSIGNED' ? 'primary' : 'success'
-}
 
 function statusLabel(s) {
   return s === 'PENDING' ? '待指派' : s === 'ASSIGNED' ? '处理中' : '已完成'
@@ -169,198 +151,183 @@ function formatTime(t) {
 onMounted(async () => {
   feedLoading.value = true
   try {
-    const res = await getFeedbackPage(1, 5)
+    const res = await getFeedbackPage(1, 10) // 请求更多数据以便演示滑动效果
     recentFeedbacks.value = res.data || []
   } catch (e) {} finally { feedLoading.value = false }
 })
 </script>
 
 <style scoped>
-.dashboard {
-  max-width: 1400px;
+/* ========== 核心空间调度 (Spatial Layout) ========== */
+.swiss-dashboard {
+  max-width: 1440px;
+  width: 100%;
+  height: 100%; /* 填满父容器 */
   margin: 0 auto;
-}
-
-/* ========== 欢迎横幅 ========== */
-.welcome-banner {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: linear-gradient(135deg, #0c8c3f 0%, #1a6b3a 50%, #0f4c2f 100%);
-  border-radius: 16px;
-  padding: 32px 36px;
-  margin-bottom: 24px;
-  color: #fff;
-  position: relative;
-  overflow: hidden;
+  flex-direction: column;
+  gap: 24px;
+  color: #1C2421;
 }
 
-.welcome-banner::after {
-  content: '';
-  position: absolute;
-  right: -40px;
-  top: -40px;
-  width: 200px;
-  height: 200px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.06);
-}
-
-.welcome-banner::before {
-  content: '';
-  position: absolute;
-  right: 80px;
-  bottom: -60px;
-  width: 150px;
-  height: 150px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.04);
-}
-
-.welcome-left { position: relative; z-index: 1; }
-.welcome-greeting { font-size: 15px; opacity: 0.85; margin-bottom: 6px; }
-.welcome-emoji { font-size: 22px; margin-right: 6px; animation: wave 1.5s infinite; display: inline-block; }
-@keyframes wave { 0%,100% { transform: rotate(0); } 25% { transform: rotate(15deg); } 75% { transform: rotate(-15deg); } }
-
-.welcome-name { font-size: 28px; font-weight: 700; margin: 0 0 4px 0; letter-spacing: 1px; }
-.welcome-date { font-size: 13px; opacity: 0.7; margin: 0; }
-
-.welcome-right { position: relative; z-index: 1; }
-.weather-card {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  background: rgba(255,255,255,0.12);
-  backdrop-filter: blur(10px);
-  padding: 16px 22px;
-  border-radius: 14px;
-}
-.weather-icon { font-size: 36px; }
-.weather-temp { font-size: 16px; font-weight: 600; }
-.weather-desc { font-size: 12px; opacity: 0.7; margin-top: 2px; }
-
-/* ========== 统计卡片 ========== */
-.stats-row { margin-bottom: 24px; }
-
-.stat-card {
-  background: #fff;
-  border-radius: 14px;
-  padding: 22px;
-  cursor: pointer;
-  transition: all 0.3s;
-  border: 1px solid #f0f0f0;
-  position: relative;
-  overflow: hidden;
-}
-.stat-card::after {
-  content: '';
-  position: absolute;
-  top: 0; left: 0;
-  width: 4px; height: 100%;
-  background: var(--card-color);
-  transition: width 0.3s;
-}
-.stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 30px rgba(0,0,0,0.1);
-}
-.stat-card:hover::after { width: 6px; }
-
-.stat-body { display: flex; justify-content: space-between; align-items: flex-start; }
-.count-num { font-size: 28px; font-weight: 800; color: #1a1a1a; }
-.count-unit { font-size: 14px; color: #999; margin-left: 4px; }
-.stat-label { font-size: 13px; color: #999; margin-top: 4px; }
-
-.stat-icon-box {
-  width: 50px; height: 50px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* 锁定部分：禁止压缩 */
+.fixed-section {
   flex-shrink: 0;
 }
 
-.stat-footer { margin-top: 16px; padding-top: 14px; border-top: 1px solid #f5f5f5; font-size: 12px; }
-.stat-trend { font-weight: 600; }
-.stat-trend.up { color: #0c8c3f; }
-.stat-trend.down { color: #F56C6C; }
-.stat-compare { color: #ccc; margin-left: 6px; }
-
-/* ========== 快捷操作 ========== */
-.quick-card, .feedback-card {
-  background: #fff;
-  border-radius: 14px;
-  border: 1px solid #f0f0f0;
-  overflow: hidden;
+/* 伸缩部分：填满剩余空间 */
+.stretch-section {
+  flex: 1;
+  min-height: 0; /* 这是让 flex 子元素能够在内部发生滚动的绝对关键 */
 }
 
-.card-header {
+/* ========== 通用玻璃面板 ========== */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 24px;
+  box-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.04), inset 0 2px 4px rgba(255, 255, 255, 0.6);
+}
+
+/* ========== 1. 欢迎区 ========== */
+.hero-section {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 24px 0;
-  margin-bottom: 8px;
+  padding: 36px 48px;
 }
-.card-header h3 { font-size: 17px; font-weight: 700; margin: 0; }
+.hero-greeting { font-size: 26px; font-weight: 400; margin: 0 0 8px 0; letter-spacing: 0.5px; color: #74807B; }
+.hero-name { font-weight: 600; color: #1C2421; }
+.hero-date { font-size: 14px; font-weight: 500; color: #74807B; margin: 0; letter-spacing: 0.5px; }
 
-.quick-grid { padding: 8px 24px 20px; }
-.quick-item {
+.hero-status {
+  display: flex; align-items: center; gap: 16px; padding: 12px 24px;
+  background: rgba(255, 255, 255, 0.5); border-radius: 100px; border: 1px solid rgba(255, 255, 255, 0.6);
+}
+.status-icon-ring {
+  width: 36px; height: 36px; border-radius: 50%; background: #2A483A; color: #FFF;
+  display: flex; justify-content: center; align-items: center; font-size: 18px;
+}
+.status-title { font-size: 14px; font-weight: 600; color: #1C2421; }
+.status-subtitle { font-size: 12px; color: #74807B; margin-top: 2px; }
+
+/* ========== 2. 统计数据网格 ========== */
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+.stat-glass-card {
+  background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.8); border-radius: 24px;
+  box-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.04);
+  padding: 24px; transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); cursor: pointer;
+}
+.stat-glass-card:hover {
+  background: rgba(255, 255, 255, 0.85); transform: translateY(-4px); box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.08);
+}
+.stat-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.stat-label { font-size: 14px; font-weight: 600; color: #74807B; letter-spacing: 0.5px; }
+.stat-icon-wrapper {
+  width: 32px; height: 32px; border-radius: 10px; background: rgba(28, 36, 33, 0.04); color: #2A483A;
+  display: flex; justify-content: center; align-items: center; font-size: 16px;
+}
+.stat-body { margin-bottom: 16px; }
+.value-number { font-size: 32px; font-weight: 700; color: #1C2421; letter-spacing: 0.5px; }
+.value-unit { font-size: 14px; color: #74807B; margin-left: 6px; font-weight: 500; }
+.stat-footer { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; }
+.trend-indicator { display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 6px; }
+.trend-indicator.is-positive { background: rgba(42, 168, 118, 0.1); color: #2AA876; }
+.trend-indicator.is-negative { background: rgba(217, 83, 79, 0.1); color: #D9534F; }
+.trend-context { color: #A0AAB2; }
+
+/* ========== 3. 操作与反馈分栏 (滑动核心区) ========== */
+.content-split-grid {
+  display: grid;
+  grid-template-columns: 1fr 2fr; 
+  gap: 24px;
+}
+
+.scrollable-card {
   display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.25s;
+  flex-direction: column;
+  overflow: hidden; /* 防止内部结构撑爆玻璃面板 */
 }
-.quick-item:hover { background: #f9fafb; transform: translateX(4px); }
 
-.quick-icon {
-  width: 44px; height: 44px;
-  border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
+.panel-header {
+  flex-shrink: 0; /* 标题头不允许被挤压 */
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 24px 28px 16px;
+  border-bottom: 1px solid rgba(28, 36, 33, 0.06);
 }
-.quick-info { flex: 1; }
-.quick-name { font-size: 14px; font-weight: 600; color: #303133; }
-.quick-desc { font-size: 12px; color: #999; margin-top: 2px; }
-
-/* ========== 反馈列表 ========== */
-.feedback-list { padding: 0 24px 16px; max-height: 540px; overflow-y: auto; }
-
-.feedback-item {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.25s;
-  margin-bottom: 4px;
+.panel-title { font-size: 16px; font-weight: 600; color: #1C2421; margin: 0; }
+.text-link-btn {
+  background: transparent; border: none; cursor: pointer;
+  font-size: 13px; font-weight: 600; color: #2A483A;
+  display: flex; align-items: center; gap: 4px; transition: opacity 0.2s;
 }
-.feedback-item:hover { background: #f9fafb; }
+.text-link-btn:hover { opacity: 0.7; }
 
-.fb-left { flex-shrink: 0; }
-.fb-avatar {
-  width: 40px; height: 40px;
-  border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
-  font-weight: 800; font-size: 16px; color: #fff;
+/* 卡片内部滑动核心设置 */
+.scroll-area {
+  flex: 1; /* 吸干剩下的全部高度 */
+  overflow-y: auto; /* 超出区域才产生滑动 */
+  scrollbar-width: none; /* 隐藏火狐浏览器的丑陋滚动条 */
+  -ms-overflow-style: none; /* 隐藏 IE 滚动条 */
 }
-.fb-avatar.aqi-1, .fb-avatar.aqi-2 { background: #00e400; }
-.fb-avatar.aqi-3 { background: #ff7e00; }
-.fb-avatar.aqi-4 { background: #ff0000; }
-.fb-avatar.aqi-5 { background: #99004c; }
-.fb-avatar.aqi-6 { background: #7e0023; }
+.scroll-area::-webkit-scrollbar { 
+  display: none; /* 隐藏 Chrome/Safari 的滚动条，保持纯净玻璃感 */
+}
 
-.fb-center { flex: 1; min-width: 0; }
-.fb-address { font-size: 13px; color: #666; display: flex; align-items: center; gap: 4px; }
-.fb-desc { font-size: 14px; font-weight: 500; color: #303133; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 便当盒控制矩阵 */
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  padding: 24px 28px;
+  align-content: start; /* 即使内容不够，也从顶部排列 */
+}
+.bento-item {
+  background: rgba(255, 255, 255, 0.5); border: 1px solid rgba(255, 255, 255, 0.8); border-radius: 16px;
+  padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  cursor: pointer; transition: all 0.3s;
+}
+.bento-item:hover {
+  background: #FFFFFF; box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.06); transform: scale(1.02);
+}
+.bento-icon { font-size: 24px; color: #2A483A; }
+.bento-label { font-size: 13px; font-weight: 600; color: #1C2421; }
 
-.fb-right { text-align: right; flex-shrink: 0; }
-.fb-time { font-size: 11px; color: #ccc; margin-top: 4px; }
+/* 极简反馈流 */
+.stream-list { padding: 12px 28px 28px; }
+.stream-item {
+  display: flex; align-items: center; gap: 16px; padding: 16px 0;
+  border-bottom: 1px solid rgba(28, 36, 33, 0.06); cursor: pointer; transition: padding 0.3s;
+}
+.stream-item:last-child { border-bottom: none; }
+.stream-item:hover { 
+  padding-left: 8px; padding-right: 8px; 
+  background: rgba(255, 255, 255, 0.4); border-radius: 12px; border-bottom-color: transparent; 
+}
 
-@media (max-width: 1200px) {
-  .stats-row .el-col { flex: 0 0 50%; max-width: 50%; margin-bottom: 16px; }
+.aqi-indicator { width: 40px; height: 40px; border-radius: 12px; background: rgba(28, 36, 33, 0.03); display: flex; justify-content: center; align-items: center; flex-shrink: 0; }
+.aqi-dot { width: 12px; height: 12px; border-radius: 50%; }
+.aqi-level-1 .aqi-dot, .aqi-level-2 .aqi-dot { background: #2AA876; box-shadow: 0 0 10px rgba(42, 168, 118, 0.4); }
+.aqi-level-3 .aqi-dot { background: #F5A623; box-shadow: 0 0 10px rgba(245, 166, 35, 0.4); }
+.aqi-level-4 .aqi-dot, .aqi-level-5 .aqi-dot, .aqi-level-6 .aqi-dot { background: #D9534F; box-shadow: 0 0 10px rgba(217, 83, 79, 0.4); }
+
+.stream-content { flex: 1; min-width: 0; }
+.stream-desc { font-size: 15px; font-weight: 500; color: #1C2421; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
+.stream-meta { display: flex; align-items: center; gap: 4px; font-size: 13px; color: #74807B; }
+
+.stream-status { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+.status-pill { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; }
+.status-pending { background: rgba(245, 166, 35, 0.15); color: #F5A623; }
+.status-assigned { background: rgba(64, 158, 255, 0.15); color: #409EFF; }
+.status-resolved { background: rgba(42, 168, 118, 0.15); color: #2AA876; }
+
+.stream-time { font-size: 12px; color: #A0AAB2; font-weight: 500; }
+
+@media (max-width: 1024px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .content-split-grid { grid-template-columns: 1fr; }
 }
 </style>

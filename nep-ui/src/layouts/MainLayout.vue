@@ -1,135 +1,136 @@
 <template>
-  <el-container class="layout-container">
-    <!-- 侧边栏 -->
-    <el-aside width="220px" class="layout-aside">
-      <div class="logo">
-        <el-icon :size="28"><Monitor /></el-icon>
-        <span>NEP环保监督系统</span>
+  <div class="swiss-spa-layout">
+    <div class="ambient-background">
+      <div class="ambient-glow glow-sage"></div>
+      <div class="ambient-glow glow-mist"></div>
+      <div class="ambient-glow glow-sand"></div>
+      <div class="fine-grain-overlay"></div>
+    </div>
+
+    <header class="crystal-topbar">
+      <div class="topbar-section left-section">
+        <div class="brand-mark">
+          <el-icon class="brand-icon"><Platform /></el-icon>
+        </div>
+        <span class="brand-name">NEP 环保中枢</span>
       </div>
 
-      <el-menu
-        :default-active="activeMenu"
-        router
-        background-color="#304156"
-        text-color="#bfcbd9"
-        active-text-color="#409EFF"
-      >
-        <el-menu-item index="/home">
-          <el-icon><HomeFilled /></el-icon>
-          <span>首页</span>
-        </el-menu-item>
+      <div class="topbar-section center-section">
+        <div class="status-indicator">
+          <div class="pulse-dot"></div>
+          <span class="status-message">系统运行稳定</span>
+        </div>
+      </div>
 
-        <el-sub-menu index="feedback-group" v-if="role === 'NEPS' || role === 'NEPM'">
-          <template #title>
-            <el-icon><EditPen /></el-icon>
-            <span>监督反馈</span>
+      <div class="topbar-section right-section">
+        <button class="icon-action-btn"><el-icon><Search /></el-icon></button>
+        <button class="icon-action-btn notification-btn">
+          <el-icon><Bell /></el-icon>
+          <div class="notification-badge"></div>
+        </button>
+        
+        <div class="separator"></div>
+
+        <el-dropdown trigger="click" placement="bottom-end" :popper-class="'swiss-dropdown'">
+          <div class="profile-capsule">
+            <span class="profile-name">{{ userStore.user?.realName || '用户' }}</span>
+            <el-avatar :size="30" class="profile-avatar" :src="avatarUrl">
+              <el-icon v-if="!avatarUrl"><UserFilled /></el-icon>
+            </el-avatar>
+          </div>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item class="info-row" style="pointer-events: none;">
+                <span class="dropdown-role">{{ roleName }}</span>
+              </el-dropdown-item>
+              <el-dropdown-item divided @click="$router.push('/profile')">个人中心</el-dropdown-item>
+              <el-dropdown-item @click="handleLogout" class="danger-action">退出登录</el-dropdown-item>
+            </el-dropdown-menu>
           </template>
-          <el-menu-item index="/feedback">反馈列表</el-menu-item>
-          <el-menu-item index="/feedback/submit" v-if="role === 'NEPS'">提交反馈</el-menu-item>
-        </el-sub-menu>
+        </el-dropdown>
+      </div>
+    </header>
 
-        <el-menu-item index="/aqi" v-if="role === 'NEPG' || role === 'NEPM'">
-          <el-icon><DataAnalysis /></el-icon>
-          <span>AQI检测</span>
-        </el-menu-item>
+    <aside class="minimal-dock">
+      <nav class="dock-navigation">
+        <el-tooltip
+          v-for="item in dynamicMenuItems"
+          :key="item.path"
+          :content="item.title"
+          placement="right"
+          :show-after="300"
+          popper-class="swiss-tooltip"
+        >
+          <router-link :to="item.path" class="dock-action" active-class="is-active">
+            <div class="dock-icon-box">
+              <el-icon><component :is="item.icon" /></el-icon>
+            </div>
+          </router-link>
+        </el-tooltip>
+      </nav>
+    </aside>
 
-        <el-menu-item index="/statistics" v-if="role === 'NEPM' || role === 'NEPV'">
-          <el-icon><PieChart /></el-icon>
-          <span>数据统计</span>
-        </el-menu-item>
-
-        <el-menu-item index="/ai">
-          <el-icon><ChatDotRound /></el-icon>
-          <span>AI助手</span>
-        </el-menu-item>
-
-        <el-menu-item index="/admin/dashboard" v-if="role === 'NEPM'">
-          <el-icon><Setting /></el-icon>
-          <span>管理后台</span>
-        </el-menu-item>
-      </el-menu>
-    </el-aside>
-
-    <!-- 主内容区 -->
-    <el-container>
-      <!-- 头部 -->
-      <el-header class="layout-header">
-        <div class="header-left">
-          <el-breadcrumb separator="/">
-            <el-breadcrumb-item :to="{ path: '/home' }">首页</el-breadcrumb-item>
-            <el-breadcrumb-item>{{ route.meta.title }}</el-breadcrumb-item>
-          </el-breadcrumb>
-        </div>
-        <div class="header-right">
-          <el-dropdown trigger="click">
-            <span class="user-info">
-              <el-avatar :size="32" :src="avatarUrl">
-                <el-icon v-if="!avatarUrl"><UserFilled /></el-icon>
-              </el-avatar>
-              <span class="username">{{ userStore.user?.realName || '用户' }}</span>
-              <el-icon><ArrowDown /></el-icon>
-            </span>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item style="display:flex;align-items:center;gap:8px">
-                  <el-tag :type="roleTagType" size="small">{{ roleName }}</el-tag>
-                  <span style="font-size:12px;color:#999">{{ userStore.user?.phone || '' }}</span>
-                </el-dropdown-item>
-                <el-dropdown-item @click="$router.push('/profile')">
-                  <el-icon><User /></el-icon> 个人中心
-                </el-dropdown-item>
-                <el-dropdown-item divided @click="handleLogout">
-                  <el-icon><SwitchButton /></el-icon> 退出登录
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-        </div>
-      </el-header>
-
-      <!-- 内容 -->
-      <el-main class="layout-main">
-        <router-view />
-      </el-main>
-
-      <!-- 底部 -->
-      <el-footer class="layout-footer">
-        <span>东软环保公众监督系统 NEP v1.0 | © 2026 Neusoft</span>
-      </el-footer>
-    </el-container>
-  </el-container>
+    <main class="pristine-canvas">
+      <div class="canvas-viewport">
+        <router-view v-slot="{ Component, route }">
+          <transition name="seamless-fade" mode="out-in">
+            <div :key="route.path" class="viewport-content">
+              <component :is="Component" />
+            </div>
+          </transition>
+        </router-view>
+      </div>
+    </main>
+  </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { ElMessageBox } from 'element-plus'
+import { 
+  Platform, HomeFilled, Document, DataLine, EditPen,
+  PieChart, ChatDotRound, Setting, Bell, Search, UserFilled
+} from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 
-const activeMenu = computed(() => route.path)
 const role = computed(() => userStore.getRole())
+
+const roleName = computed(() => {
+  const map = { 'NEPS': '公众监督员', 'NEPG': '网格员', 'NEPM': '系统管理员', 'NEPV': '决策者' }
+  return map[role.value] || '系统用户'
+})
 
 const avatarUrl = computed(() => {
   const av = userStore.user?.avatar
   return av && av.length > 0 ? av : ''
 })
 
-const roleTagType = computed(() => {
-  const map = { 'NEPS': 'primary', 'NEPG': 'success', 'NEPM': 'warning', 'NEPV': 'info' }
-  return map[role.value] || 'primary'
+const dynamicMenuItems = computed(() => {
+  const items = [{ path: '/home', title: '全局概览', icon: HomeFilled, show: true }]
+  if (role.value === 'NEPS' || role.value === 'NEPM') items.push({ path: '/feedback', title: '监督反馈', icon: Document, show: true })
+  if (role.value === 'NEPS') items.push({ path: '/feedback/submit', title: '提交反馈', icon: EditPen, show: true })
+  if (role.value === 'NEPG' || role.value === 'NEPM') items.push({ path: '/aqi', title: 'AQI 监测', icon: DataLine, show: true })
+  if (role.value === 'NEPM' || role.value === 'NEPV') items.push({ path: '/statistics', title: '数据大盘', icon: PieChart, show: true })
+  items.push({ path: '/ai', title: 'AI 助手', icon: ChatDotRound, show: true })
+  if (role.value === 'NEPM') items.push({ path: '/admin/dashboard', title: '管理后台', icon: Setting, show: true })
+  return items.filter(item => item.show)
 })
 
-const roleName = computed(() => {
-  const map = { 'NEPS': '公众监督员', 'NEPG': '网格员', 'NEPM': '管理员', 'NEPV': '决策者' }
-  return map[role.value] || '未知'
-})
-
-function handleLogout() {
-  userStore.logout()
-  router.push('/login')
+const handleLogout = () => {
+  ElMessageBox.confirm('确定要退出 NEP 环保系统吗？', '退出确认', {
+    confirmButtonText: '退出登录',
+    cancelButtonText: '取消',
+    type: 'warning',
+    customClass: 'swiss-message-box'
+  }).then(() => {
+    userStore.logout()
+    router.push('/login')
+  }).catch(() => {})
 }
 
 onMounted(() => {
@@ -138,56 +139,224 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.layout-container { height: 100vh; }
-
-.layout-aside {
-  background-color: #304156;
-  overflow-y: auto;
+/* ========== Design System Variables ========== */
+:root {
+  --color-surface: #F4F6F5;
+  --color-text-primary: #1C2421;
+  --color-text-secondary: #74807B;
+  --color-accent: #2A483A;
+  
+  --glass-bg: rgba(255, 255, 255, 0.65);
+  --glass-border: rgba(255, 255, 255, 0.8);
+  --glass-shadow: 0 8px 32px -8px rgba(28, 36, 33, 0.05), 0 4px 16px -4px rgba(28, 36, 33, 0.03);
+  
+  --layout-spacing: 24px;
+  --topbar-height: 56px;
+  --dock-width: 64px;
 }
 
-.logo {
-  height: 60px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 16px;
-  font-weight: bold;
-  gap: 10px;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
+/* ========== Global Layout ========== */
+.swiss-spa-layout {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background-color: #F4F6F5;
+  font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #1C2421;
 }
 
-.el-menu { border-right: none; }
+/* ========== 1. Ambient Background ========== */
+.ambient-background { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.ambient-glow {
+  position: absolute; filter: blur(140px); opacity: 0.5;
+  animation: ethereal-drift 30s infinite alternate cubic-bezier(0.4, 0, 0.6, 1);
+}
+.glow-sage { width: 55vw; height: 55vw; background: rgba(205, 222, 214, 0.8); top: -10%; left: -5%; }
+.glow-mist { width: 45vw; height: 45vw; background: rgba(228, 233, 237, 0.8); bottom: -10%; right: -5%; animation-delay: -10s; }
+.glow-sand { width: 50vw; height: 50vw; background: rgba(240, 236, 228, 0.6); top: 25%; left: 25%; animation-delay: -20s; }
 
-.layout-header {
+@keyframes ethereal-drift {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(3%, 4%) scale(1.05); }
+}
+
+.fine-grain-overlay {
+  position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.015'/%3E%3C/svg%3E");
+}
+
+/* ========== 2. Crystal Topbar (The Refined Island) ========== */
+.crystal-topbar {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  height: 56px;
+  
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(40px) saturate(160%);
+  -webkit-backdrop-filter: blur(40px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-bottom-color: rgba(255, 255, 255, 0.5);
+  border-radius: 28px;
+  box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.04), inset 0 2px 4px rgba(255, 255, 255, 0.8);
+  z-index: 100;
+  
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #fff;
-  border-bottom: 1px solid #e6e6e6;
-  padding: 0 20px;
+  padding: 0 8px 0 24px;
+  gap: 32px;
+  transition: box-shadow 0.4s ease;
 }
 
-.header-right .user-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
+.crystal-topbar:hover { box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.06), inset 0 2px 4px rgba(255, 255, 255, 0.9); }
+
+.topbar-section { display: flex; align-items: center; }
+
+.left-section { gap: 12px; }
+.brand-mark { color: #2A483A; font-size: 20px; display: flex; }
+.brand-name { font-size: 15px; font-weight: 600; letter-spacing: 0.5px; color: #1C2421; }
+
+.center-section { padding: 0 24px; border-left: 1px solid rgba(28, 36, 33, 0.08); border-right: 1px solid rgba(28, 36, 33, 0.08); }
+.status-indicator { display: flex; align-items: center; gap: 8px; }
+.pulse-dot {
+  width: 6px; height: 6px; border-radius: 50%; background-color: #2A483A;
+  box-shadow: 0 0 0 0 rgba(42, 72, 58, 0.4);
+  animation: gentle-pulse 3s infinite;
+}
+@keyframes gentle-pulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(42, 72, 58, 0.4); }
+  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(42, 72, 58, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(42, 72, 58, 0); }
+}
+.status-message { font-size: 13px; font-weight: 500; color: #74807B; letter-spacing: 0.3px; }
+
+.right-section { gap: 4px; }
+.icon-action-btn {
+  width: 36px; height: 36px; border-radius: 50%; border: none; background: transparent;
+  display: flex; justify-content: center; align-items: center;
+  font-size: 16px; color: #74807B; cursor: pointer; transition: all 0.3s ease; position: relative;
+}
+.icon-action-btn:hover { background: rgba(28, 36, 33, 0.04); color: #1C2421; }
+
+.notification-badge {
+  position: absolute; top: 8px; right: 8px; width: 6px; height: 6px;
+  background-color: #D9534F; border-radius: 50%; border: 1.5px solid #FFF;
 }
 
-.layout-main {
-  background-color: #f0f2f5;
-  min-height: calc(100vh - 120px);
-  padding: 20px;
+.separator { width: 1px; height: 16px; background-color: rgba(28, 36, 33, 0.1); margin: 0 8px; }
+
+.profile-capsule {
+  display: flex; align-items: center; gap: 12px;
+  padding: 4px 4px 4px 16px; border-radius: 20px;
+  cursor: pointer; transition: background 0.3s ease;
+}
+.profile-capsule:hover { background: rgba(28, 36, 33, 0.03); }
+.profile-name { font-size: 14px; font-weight: 500; color: #1C2421; }
+.profile-avatar { background: #E4E9ED; color: #74807B; border: 1.5px solid #FFF; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+
+/* ========== 3. Minimalist Dock ========== */
+.minimal-dock {
+  position: absolute;
+  top: 50%;
+  left: 24px;
+  transform: translateY(-50%);
+  z-index: 100;
+  
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(40px) saturate(160%);
+  -webkit-backdrop-filter: blur(40px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 32px;
+  box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.04), inset 0 2px 4px rgba(255, 255, 255, 0.6);
+  
+  padding: 12px 10px;
 }
 
-.layout-footer {
-  text-align: center;
-  color: #999;
-  font-size: 13px;
-  height: 50px;
-  line-height: 50px;
-  border-top: 1px solid #e6e6e6;
-  background: #fff;
+.dock-navigation { display: flex; flex-direction: column; gap: 8px; }
+
+.dock-action {
+  width: 44px; height: 44px;
+  display: flex; justify-content: center; align-items: center;
+  text-decoration: none; outline: none; position: relative;
+}
+
+.dock-icon-box {
+  width: 40px; height: 40px; border-radius: 20px;
+  display: flex; justify-content: center; align-items: center;
+  font-size: 18px; color: #74807B;
+  background: transparent;
+  transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.dock-action:hover .dock-icon-box { color: #1C2421; background: rgba(255, 255, 255, 0.6); transform: scale(1.05); }
+
+.dock-action.is-active .dock-icon-box {
+  background: #FFFFFF; color: #2A483A;
+  box-shadow: 0 4px 12px rgba(28, 36, 33, 0.06), inset 0 1px 2px rgba(255, 255, 255, 1);
+}
+
+/* ========== 4. Pristine Canvas ========== */
+.pristine-canvas {
+  position: absolute;
+  top: calc(24px + 56px + 32px);
+  left: calc(24px + 64px + 32px);
+  right: 48px;
+  bottom: 32px;
+  z-index: 50;
+  display: flex; flex-direction: column;
+}
+
+.canvas-viewport { flex: 1; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; }
+.canvas-viewport::-webkit-scrollbar { display: none; }
+
+.viewport-content { height: 100%; }
+
+/* Seamless Transition */
+.seamless-fade-enter-active, .seamless-fade-leave-active { transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.seamless-fade-enter-from { opacity: 0; transform: translateY(10px); }
+.seamless-fade-leave-to { opacity: 0; transform: translateY(-10px); }
+</style>
+
+<style>
+/* Swiss Style Reset (Injected Globally) */
+.swiss-dropdown.el-dropdown-menu {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(40px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.9) !important;
+  border-radius: 16px !important;
+  padding: 8px !important;
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.02) !important;
+}
+.swiss-dropdown .info-row { padding: 8px 16px; margin-bottom: 4px; }
+.swiss-dropdown .dropdown-role { font-size: 12px; font-weight: 600; color: #74807B; text-transform: uppercase; letter-spacing: 0.5px; }
+.swiss-dropdown .el-dropdown-menu__item { border-radius: 8px; margin: 2px 0; font-size: 14px; font-weight: 500; color: #1C2421; padding: 8px 16px; transition: all 0.2s; }
+.swiss-dropdown .el-dropdown-menu__item:hover { background: rgba(28, 36, 33, 0.04) !important; color: #1C2421 !important; }
+.swiss-dropdown .danger-action:hover { background: rgba(217, 83, 79, 0.08) !important; color: #D9534F !important; }
+
+.swiss-tooltip.el-popper {
+  background: rgba(28, 36, 33, 0.85) !important;
+  backdrop-filter: blur(16px) !important;
+  border: none !important;
+  border-radius: 8px !important;
+  color: #FFFFFF !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.5px !important;
+  padding: 8px 14px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
+}
+.swiss-tooltip.el-popper .el-popper__arrow::before { background: rgba(28, 36, 33, 0.85) !important; border: none !important; }
+
+.swiss-message-box {
+  border-radius: 20px !important;
+  border: 1px solid rgba(255, 255, 255, 0.8) !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(40px) !important;
+  box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.1) !important;
 }
 </style>

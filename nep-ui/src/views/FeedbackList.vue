@@ -16,6 +16,8 @@
             <el-option label="待指派" value="PENDING" />
             <el-option label="网格员处理中" value="ASSIGNED" />
             <el-option label="案件已归档" value="COMPLETED" />
+            <el-option label="已拒绝" value="REJECTED" />
+            <el-option label="已升级" value="ESCALATED" />
           </el-select>
         </div>
 
@@ -47,7 +49,10 @@
             :class="{ 'is-active': selectedFeedback?.id === item.id }" @click="selectFeedback(item)">
             <div class="ticket-top">
               <span class="ticket-id">#{{ String(item.id).padStart(5, '0') }}</span>
-              <div class="mini-status" :class="'status-' + item.status.toLowerCase()"></div>
+              <div class="ticket-top-right">
+                <el-tag v-if="isTimeout(item)" type="danger" size="small" effect="dark">超时</el-tag>
+                <div class="mini-status" :class="'status-' + item.status.toLowerCase()"></div>
+              </div>
             </div>
             <div class="ticket-main">
               <div class="ticket-title">{{ item.description || '常规环境监测记录' }}</div>
@@ -152,6 +157,29 @@
                 </div>
               </div>
 
+              <!-- 满意度评价 (Feature 5) -->
+              <div v-if="selectedFeedback.status === 'COMPLETED'" class="bento-card col-span-2">
+                <div class="bento-icon-header"><el-icon><Star /></el-icon><span>满意度评价</span></div>
+                <div v-if="selectedFeedback.rating">
+                  <el-rate v-model="selectedFeedback.rating" disabled show-score text-color="#ff9900" />
+                  <p v-if="selectedFeedback.ratingComment" class="rating-comment">{{ selectedFeedback.ratingComment }}</p>
+                  <p v-if="selectedFeedback.ratingTime" class="rating-time">评价于 {{ formatTime(selectedFeedback.ratingTime) }}</p>
+                </div>
+                <div v-else>
+                  <el-rate v-model="newRating" show-score text-color="#ff9900" />
+                  <el-input v-model="newRatingComment" type="textarea" :rows="2" placeholder="评价备注（可选）..." style="margin-top:8px" />
+                  <el-button type="primary" size="small" @click="handleRate" style="margin-top:8px">提交评价</el-button>
+                </div>
+              </div>
+
+              <!-- 拒绝原因 (Feature 2) -->
+              <div v-if="selectedFeedback.status === 'REJECTED' && selectedFeedback.rejectReason" class="bento-card col-span-2">
+                <div class="bento-icon-header"><el-icon><WarningFilled /></el-icon><span>拒绝原因</span></div>
+                <div class="description-box" style="color:#D9534F">
+                  {{ selectedFeedback.rejectReason }}
+                </div>
+              </div>
+
             </div>
           </div>
         </template>
@@ -170,11 +198,12 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { getFeedbackPage } from '@/api/feedback'
+import { getFeedbackPage, rateFeedback, getFeedbackById } from '@/api/feedback'
 import {
   RefreshRight, Plus, LocationInformation,
-  Location, DataLine, User, Avatar, Document
+  Location, DataLine, User, Avatar, Document, Star, WarningFilled
 } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 
 const loading = ref(false)
 const tableData = ref([])
@@ -199,12 +228,38 @@ const currentStepIndex = computed(() => {
   if (s === 'PENDING') return 0
   if (s === 'ASSIGNED') return 2
   if (s === 'COMPLETED') return 5
+  if (s === 'REJECTED') return 1
+  if (s === 'ESCALATED') return 1
   return 0
 })
 
 function formatTime(t) {
   if (!t) return '-'
   return t.replace('T', ' ').substring(0, 16)
+}
+
+// 超时判断 (>24h 未处理的 PENDING)
+function isTimeout(item) {
+  if (item.status !== 'PENDING') return false
+  const created = new Date(item.createTime).getTime()
+  return (Date.now() - created) > 24 * 60 * 60 * 1000
+}
+
+// 满意度评价
+const newRating = ref(0)
+const newRatingComment = ref('')
+const currentUserId = ref(Number(localStorage.getItem('userId') || 0))
+
+async function handleRate() {
+  if (newRating.value === 0) { ElMessage.warning('请选择评分'); return }
+  try {
+    await rateFeedback(selectedFeedback.value.id, currentUserId.value, newRating.value, newRatingComment.value)
+    ElMessage.success('评价成功')
+    // 刷新详情
+    const res = await getFeedbackById(selectedFeedback.value.id)
+    selectedFeedback.value = res.data
+    handleSearch()
+  } catch(e) {}
 }
 
 function selectFeedback(item) {
@@ -492,6 +547,41 @@ onMounted(() => {
 .status-completed {
   background: #2AA876;
   box-shadow: 0 0 6px rgba(42, 168, 118, 0.4);
+}
+
+.status-rejected {
+  background: #D9534F;
+  box-shadow: 0 0 6px rgba(217, 83, 79, 0.4);
+}
+
+.status-escalated {
+  background: #E6A23C;
+  box-shadow: 0 0 6px rgba(230, 162, 60, 0.4);
+}
+
+.ticket-top-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 超时行的视觉强调 */
+.feed-ticket-card:has(.ticket-top-right .el-tag--danger) {
+  border-left: 3px solid #F56C6C;
+}
+
+/* 满意度评价 */
+.rating-comment {
+  color: #666;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-top: 8px;
+}
+
+.rating-time {
+  font-size: 12px;
+  color: #999;
+  margin-top: 4px;
 }
 
 .ticket-main {

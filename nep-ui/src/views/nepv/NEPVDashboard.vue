@@ -14,6 +14,12 @@
       <div class="kpi warn"><div class="val">{{ overview.pendingFeedbacks || 0 }}</div><div class="lbl">待处理反馈</div></div>
     </div>
 
+    <!-- 污染热点地图 -->
+    <div class="map-section">
+      <h3>🗺️ 污染热点地图 — 全国AQI实时分布</h3>
+      <MapView style="height:520px" />
+    </div>
+
     <div class="charts-grid">
       <div class="chart-card">
         <h3>📊 反馈状态分布</h3>
@@ -24,7 +30,7 @@
         <div ref="lineChart" style="height:300px"></div>
       </div>
       <div class="chart-card span-2">
-        <h3>🗺️ 各省份反馈统计</h3>
+        <h3>🏙️ 各省份反馈统计</h3>
         <div ref="barChart" style="height:300px"></div>
       </div>
     </div>
@@ -35,6 +41,7 @@
 import { ref, onMounted, onUnmounted, markRaw } from 'vue'
 import * as echarts from 'echarts'
 import { getOverview, getFeedbackStatus, getAqiDistribution, getProvinceFeedback, getMonthlyTrend } from '@/api/statistics'
+import MapView from '@/components/MapView.vue'
 
 const loading = ref(false)
 const overview = ref({})
@@ -112,6 +119,15 @@ onUnmounted(() => charts.forEach(c => c.dispose()))
 .kpi .val { font-size:32px; font-weight:700; color:#409EFF; }
 .kpi.warn .val { color:#F5A623; }
 .kpi .lbl { font-size:13px; color:#8899aa; margin-top:6px; }
+
+.map-section {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+.map-section h3 { margin: 0 0 16px; font-size: 16px; color: #ccc; }
 
 .charts-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
 .chart-card { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:24px; }

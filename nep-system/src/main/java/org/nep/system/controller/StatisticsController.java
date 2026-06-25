@@ -4,16 +4,17 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.nep.common.result.Result;
+import org.nep.system.entity.AqiDetection;
+import org.nep.system.entity.City;
+import org.nep.system.entity.Province;
 import org.nep.system.entity.SupervisionFeedback;
 import org.nep.system.mapper.*;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 数据统计控制器
@@ -144,6 +145,80 @@ public class StatisticsController {
             item.put("count", mockCounts[5 - i] + feedbackMapper.selectCount(null) / 6);
             result.add(item);
         }
+        return Result.ok(result);
+    }
+
+    @Operation(summary = "地图热力图数据 — 按城市聚合AQI均值和反馈数")
+    @GetMapping("/map-aqi")
+    public Result<Map<String, Object>> mapAqi() {
+        // 1. 加载所有省份和城市映射
+        Map<Long, Province> provinceMap = provinceMapper.selectList(null).stream()
+                .collect(Collectors.toMap(Province::getId, p -> p));
+        Map<Long, City> cityMap = cityMapper.selectList(null).stream()
+                .collect(Collectors.toMap(City::getId, c -> c));
+
+        // 2. 加载所有AQI检测记录
+        List<AqiDetection> detections = aqiMapper.selectList(null);
+
+        // 3. 按城市聚合
+        Map<Long, List<AqiDetection>> byCity = detections.stream()
+                .filter(d -> d.getCityId() != null)
+                .collect(Collectors.groupingBy(AqiDetection::getCityId));
+
+        List<Map<String, Object>> cityData = new ArrayList<>();
+        Map<Long, List<Double>> provinceAqiCollector = new LinkedHashMap<>();
+        Map<Long, Integer> provinceDetCount = new LinkedHashMap<>();
+
+        for (Map.Entry<Long, List<AqiDetection>> entry : byCity.entrySet()) {
+            Long cityId = entry.getKey();
+            List<AqiDetection> list = entry.getValue();
+            City city = cityMap.get(cityId);
+            if (city == null) continue;
+
+            double avgAqi = list.stream().mapToInt(AqiDetection::getFinalAqi).average().orElse(0);
+            int maxAqi = list.stream().mapToInt(AqiDetection::getFinalAqi).max().orElse(0);
+            int count = list.size();
+
+            Province province = provinceMap.get(city.getProvinceId());
+
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("cityId", cityId);
+            item.put("cityName", city.getName());
+            item.put("cityCode", city.getCode());
+            item.put("provinceId", city.getProvinceId());
+            item.put("provinceName", province != null ? province.getName() : "未知");
+            item.put("avgAqi", Math.round(avgAqi * 10.0) / 10.0);
+            item.put("maxAqi", maxAqi);
+            item.put("detectionCount", count);
+            cityData.add(item);
+
+            // 省市聚合
+            Long pid = city.getProvinceId();
+            provinceAqiCollector.computeIfAbsent(pid, k -> new ArrayList<>()).add(avgAqi);
+            provinceDetCount.merge(pid, count, Integer::sum);
+        }
+
+        // 4. 省级汇总
+        List<Map<String, Object>> provinceSummary = new ArrayList<>();
+        for (Map.Entry<Long, List<Double>> entry : provinceAqiCollector.entrySet()) {
+            Long pid = entry.getKey();
+            Province p = provinceMap.get(pid);
+            List<Double> aqiList = entry.getValue();
+            double pavg = aqiList.stream().mapToDouble(Double::doubleValue).average().orElse(0);
+
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("provinceId", pid);
+            item.put("provinceName", p != null ? p.getName() : "未知");
+            item.put("provinceCode", p != null ? p.getCode() : "");
+            item.put("avgAqi", Math.round(pavg * 10.0) / 10.0);
+            item.put("cityCount", aqiList.size());
+            item.put("totalDetections", provinceDetCount.getOrDefault(pid, 0));
+            provinceSummary.add(item);
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("cities", cityData);
+        result.put("provinces", provinceSummary);
         return Result.ok(result);
     }
 }

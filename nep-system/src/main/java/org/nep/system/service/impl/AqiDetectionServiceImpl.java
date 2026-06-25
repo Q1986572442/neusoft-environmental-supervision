@@ -12,6 +12,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
+import static org.nep.system.service.impl.SupervisionFeedbackServiceImpl.STATUS_ASSIGNED;
+import static org.nep.system.service.impl.SupervisionFeedbackServiceImpl.STATUS_COMPLETED;
+
 @Service
 public class AqiDetectionServiceImpl
         extends ServiceImpl<AqiDetectionMapper, AqiDetection>
@@ -28,14 +31,14 @@ public class AqiDetectionServiceImpl
     public AqiDetection submitDetection(AqiDetection detection) {
         SupervisionFeedback feedback = feedbackMapper.selectById(detection.getFeedbackId());
         if (feedback == null) throw new BusinessException("关联的反馈记录不存在");
-        if (!"ASSIGNED".equals(feedback.getStatus())) throw new BusinessException("反馈记录状态不正确");
+        if (!STATUS_ASSIGNED.equals(feedback.getStatus())) throw new BusinessException("只能对已指派的反馈提交检测（当前状态：" + feedback.getStatus() + "）");
 
         int finalAqi = Math.max(Math.max(detection.getSo2Aqi(), detection.getCoAqi()), detection.getPm25Aqi());
         detection.setFinalAqi(finalAqi);
         detection.setDetectionTime(LocalDateTime.now());
         this.save(detection);
 
-        feedback.setStatus("COMPLETED");
+        feedback.setStatus(STATUS_COMPLETED);
         feedbackMapper.updateById(feedback);
         return detection;
     }

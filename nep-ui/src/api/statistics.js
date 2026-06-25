@@ -24,3 +24,8 @@ export function getProvinceFeedback() {
 export function getMonthlyTrend() {
   return request.get('/statistics/monthly-trend')
 }
+
+/** 地图热力图 — 按城市聚合AQI数据 */
+export function getMapAqi() {
+  return request.get('/statistics/map-aqi')
+}

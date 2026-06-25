@@ -75,7 +75,7 @@ const routes = [
     path: '/nepv',
     component: () => import('@/layouts/NEPVLayout.vue'),
     redirect: '/nepv/dashboard',
-    meta: { role: ['NEPV'] },
+    meta: { role: ['NEPV', 'NEPM'] },
     children: [
       { path: 'dashboard', name: 'NEPVDashboard', component: () => import('@/views/nepv/NEPVDashboard.vue'), meta: { title: '数据大屏' } },
       { path: 'statistics', name: 'NEPVStats', component: () => import('@/views/Statistics.vue'), meta: { title: '详细统计' } },

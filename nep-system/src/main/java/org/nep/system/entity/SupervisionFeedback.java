@@ -17,7 +17,16 @@ public class SupervisionFeedback extends BaseEntity {
     private String specificAddress;
     private Integer estimatedAqiLevel;
     private String description;
+    /** 状态: PENDING/ASSIGNED/COMPLETED/REJECTED/ESCALATED */
     private String status;
     private Long assignedInspectorId;
     private LocalDateTime assignTime;
+    /** 拒绝原因 (REJECTED时填写) */
+    private String rejectReason;
+    /** 满意度评分 1-5 */
+    private Integer rating;
+    /** 评价备注 */
+    private String ratingComment;
+    /** 评价时间 */
+    private LocalDateTime ratingTime;
 }

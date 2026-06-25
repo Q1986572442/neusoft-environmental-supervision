@@ -1,17 +1,16 @@
 package org.nep.system.controller;
 
-import io.minio.MinioClient;
-import io.minio.PutObjectArgs;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.nep.common.result.Result;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.UUID;
 
 @Tag(name = "文件上传")
@@ -19,19 +18,9 @@ import java.util.UUID;
 @RequestMapping("/api/file")
 public class FileController {
 
-    @Value("${minio.endpoint}")
-    private String endpoint;
+    private static final String UPLOAD_DIR = System.getProperty("user.dir") + File.separator + "uploads";
 
-    @Value("${minio.access-key}")
-    private String accessKey;
-
-    @Value("${minio.secret-key}")
-    private String secretKey;
-
-    @Value("${minio.bucket}")
-    private String bucket;
-
-    @Operation(summary = "上传头像（Minio存储）")
+    @Operation(summary = "上传头像")
     @PostMapping("/avatar")
     public Result<String> uploadAvatar(@RequestParam("file") MultipartFile file) {
         if (file.isEmpty()) return Result.fail("文件为空");
@@ -42,26 +31,18 @@ public class FileController {
             return Result.fail("只允许上传图片文件");
 
         try {
-            MinioClient client = MinioClient.builder()
-                    .endpoint(endpoint)
-                    .credentials(accessKey, secretKey)
-                    .build();
+            File dir = new File(UPLOAD_DIR);
+            if (!dir.exists()) dir.mkdirs();
 
             String ext = getExtension(file.getOriginalFilename());
             String filename = UUID.randomUUID() + ext;
+            File dest = new File(dir, filename);
 
-            PutObjectArgs args = PutObjectArgs.builder()
-                    .bucket(bucket)
-                    .object(filename)
-                    .contentType(contentType)
-                    .stream(file.getInputStream(), file.getSize(), -1)
-                    .build();
+            file.transferTo(dest);
 
-            client.putObject(args);
-
-            String url = String.format("%s/%s/%s", endpoint, bucket, filename);
+            String url = "/images/" + filename;
             return Result.ok("上传成功", url);
-        } catch (Exception e) {
+        } catch (IOException e) {
             return Result.fail("上传失败: " + e.getMessage());
         }
     }

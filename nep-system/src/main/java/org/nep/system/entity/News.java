@@ -28,6 +28,8 @@ public class News extends BaseEntity {
     private Integer status;
     /** 浏览次数 */
     private Long viewCount;
+    /** 点赞次数 */
+    private Long likeCount;
     /** 发布人ID */
     private Long publisherId;
     /** 发布时间 */

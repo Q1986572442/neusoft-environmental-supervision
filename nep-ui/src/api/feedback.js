@@ -36,3 +36,33 @@ export function assignInspector(id, inspectorId) {
 export function getMyFeedback(supervisorId) {
   return request.get(`/feedback/my/${supervisorId}`)
 }
+
+// ==================== 新增 API ====================
+
+/**
+ * 网格员拒绝反馈
+ */
+export function rejectFeedback(id, inspectorId, reason) {
+  return request.put(`/feedback/reject/${id}`, null, { params: { inspectorId, reason } })
+}
+
+/**
+ * 管理员转派反馈
+ */
+export function transferFeedback(id, toInspectorId) {
+  return request.put(`/feedback/transfer/${id}`, null, { params: { toInspectorId } })
+}
+
+/**
+ * 监督员评价已完成反馈
+ */
+export function rateFeedback(id, supervisorId, rating, ratingComment) {
+  return request.put(`/feedback/rate/${id}`, { supervisorId, rating, ratingComment })
+}
+
+/**
+ * 管理员批量指派
+ */
+export function batchAssignFeedback(ids, inspectorId) {
+  return request.post('/feedback/batch-assign', { ids, inspectorId })
+}

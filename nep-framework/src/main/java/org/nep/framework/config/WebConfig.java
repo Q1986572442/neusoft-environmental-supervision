@@ -31,8 +31,8 @@ public class WebConfig implements WebMvcConfigurer {
     /** 头像文件静态资源映射 */
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        String uploadDir = System.getProperty("user.dir") + "/uploads/avatars/";
-        registry.addResourceHandler("/images/avatars/**")
+        String uploadDir = System.getProperty("user.dir") + "/uploads/";
+        registry.addResourceHandler("/images/**")
                 .addResourceLocations("file:" + uploadDir);
     }
 }

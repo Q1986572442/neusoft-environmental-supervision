@@ -6,11 +6,18 @@
       <el-col :span="6"><el-card shadow="hover"><el-statistic title="待处理反馈" :value="stats.pendingCount"/></el-card></el-col>
       <el-col :span="6"><el-card shadow="hover"><el-statistic title="AQI检测数" :value="stats.aqiCount"/></el-card></el-col>
     </el-row>
+
+    <el-card shadow="never" style="margin-bottom:20px">
+      <template #header><span>🗺️ 全国污染热点地图 — 点击省份可下钻</span></template>
+      <MapView style="height:480px" />
+    </el-card>
+
     <el-card shadow="never">
       <template #header><span>快捷操作</span></template>
       <el-button type="primary" @click="$router.push('/admin/users')">用户管理</el-button>
       <el-button type="warning" @click="$router.push('/admin/feedbacks')">反馈管理</el-button>
       <el-button type="success" @click="$router.push('/admin/statistics')">数据统计</el-button>
+      <el-button type="danger" @click="$router.push('/nepv/dashboard')">🗺️ 数据大屏</el-button>
     </el-card>
   </div>
 </template>
@@ -19,6 +26,7 @@
 import { ref, onMounted } from 'vue'
 import { getUserList } from '@/api/user'
 import { getFeedbackPage } from '@/api/feedback'
+import MapView from '@/components/MapView.vue'
 
 const stats = ref({ userCount: 0, feedbackCount: 0, pendingCount: 0, aqiCount: 0 })
 

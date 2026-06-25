@@ -99,6 +99,17 @@ import { useUserStore } from '@/stores/user'
 import { Phone, Lock } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 
+/** 根据角色返回首页路径 */
+function getRoleHome(role) {
+  switch (role) {
+    case 'NEPS': return '/ne/home'
+    case 'NEPG': return '/nepg/home'
+    case 'NEPM': return '/admin/dashboard'
+    case 'NEPV': return '/nepv/dashboard'
+    default: return '/ne/home'
+  }
+}
+
 const router = useRouter()
 const userStore = useUserStore()
 const loading = ref(false)
@@ -137,9 +148,9 @@ async function handleLogin() {
   await formRef.value.validate()
   loading.value = true
   try {
-    await userStore.login(form.value.phone, form.value.password)
+    const data = await userStore.login(form.value.phone, form.value.password)
     ElMessage.success('登录成功，欢迎回来！')
-    router.push('/home')
+    router.push(getRoleHome(data.user.role))
   } catch (e) {
     // 错误已在拦截器处理
   } finally {

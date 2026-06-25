@@ -1,4 +1,5 @@
 import request from './index'
+import axios from 'axios'
 
 /** 用户注册 */
 export function register(data) {
@@ -28,4 +29,20 @@ export function updateUser(id, data) {
 /** 修改密码 */
 export function changePassword(data) {
   return request.put('/user/change-password', data)
+}
+
+/** 上传头像 */
+export function uploadAvatar(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  
+  const token = localStorage.getItem('token')
+  
+  return axios.post('/api/file/avatar', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    timeout: 30000
+  })
 }

@@ -77,19 +77,99 @@ public class UserController {
     @Operation(summary = "更新用户（含头像）")
     @PutMapping("/{id}")
     public Result<User> update(@PathVariable Long id, @RequestBody java.util.Map<String, Object> map) {
+        if (id == null) {
+            return Result.badRequest("用户ID不能为空");
+        }
+
+        User existUser = userService.getById(id);
+        if (existUser == null) {
+            return Result.notFound("用户不存在");
+        }
+
         User user = new User();
         user.setId(id);
-        if (map.containsKey("realName")) user.setRealName((String) map.get("realName"));
-        if (map.containsKey("age")) user.setAge(map.get("age") != null ? ((Number) map.get("age")).intValue() : null);
-        if (map.containsKey("gender")) user.setGender(map.get("gender") != null ? ((Number) map.get("gender")).intValue() : null);
-        if (map.containsKey("avatar")) user.setAvatar((String) map.get("avatar"));
-        if (map.containsKey("email")) user.setEmail((String) map.get("email"));
-        if (map.containsKey("status")) user.setStatus(map.get("status") != null ? ((Number) map.get("status")).intValue() : null);
-        if (map.containsKey("role")) user.setRole((String) map.get("role"));
-        if (map.containsKey("provinceId")) user.setProvinceId(map.get("provinceId") != null ? ((Number) map.get("provinceId")).longValue() : null);
-        if (map.containsKey("cityId")) user.setCityId(map.get("cityId") != null ? ((Number) map.get("cityId")).longValue() : null);
-        userService.updateById(user);
-        return Result.success("更新成功");
+
+        try {
+            if (map.containsKey("realName")) {
+                Object val = map.get("realName");
+                user.setRealName(val != null ? String.valueOf(val) : null);
+            }
+            if (map.containsKey("age")) {
+                Object val = map.get("age");
+                if (val != null) {
+                    if (val instanceof Number) {
+                        user.setAge(((Number) val).intValue());
+                    } else {
+                        user.setAge(Integer.parseInt(String.valueOf(val)));
+                    }
+                }
+            }
+            if (map.containsKey("gender")) {
+                Object val = map.get("gender");
+                if (val != null) {
+                    if (val instanceof Number) {
+                        user.setGender(((Number) val).intValue());
+                    } else {
+                        user.setGender(Integer.parseInt(String.valueOf(val)));
+                    }
+                }
+            }
+            if (map.containsKey("avatar")) {
+                Object val = map.get("avatar");
+                if (val != null) {
+                    String avatarUrl = String.valueOf(val);
+                    if (avatarUrl.length() > 500) {
+                        return Result.badRequest("头像地址过长");
+                    }
+                    user.setAvatar(avatarUrl);
+                }
+            }
+            if (map.containsKey("email")) {
+                Object val = map.get("email");
+                user.setEmail(val != null ? String.valueOf(val) : null);
+            }
+            if (map.containsKey("status")) {
+                Object val = map.get("status");
+                if (val != null) {
+                    if (val instanceof Number) {
+                        user.setStatus(((Number) val).intValue());
+                    } else {
+                        user.setStatus(Integer.parseInt(String.valueOf(val)));
+                    }
+                }
+            }
+            if (map.containsKey("role")) {
+                Object val = map.get("role");
+                user.setRole(val != null ? String.valueOf(val) : null);
+            }
+            if (map.containsKey("provinceId")) {
+                Object val = map.get("provinceId");
+                if (val != null) {
+                    if (val instanceof Number) {
+                        user.setProvinceId(((Number) val).longValue());
+                    } else {
+                        user.setProvinceId(Long.parseLong(String.valueOf(val)));
+                    }
+                }
+            }
+            if (map.containsKey("cityId")) {
+                Object val = map.get("cityId");
+                if (val != null) {
+                    if (val instanceof Number) {
+                        user.setCityId(((Number) val).longValue());
+                    } else {
+                        user.setCityId(Long.parseLong(String.valueOf(val)));
+                    }
+                }
+            }
+
+            userService.updateById(user);
+            return Result.success("更新成功");
+        } catch (NumberFormatException e) {
+            return Result.badRequest("参数格式错误: " + e.getMessage());
+        } catch (Exception e) {
+            return Result.serverError("更新失败: " + e.getMessage());
+        }
     }
 
     @Operation(summary = "修改密码")

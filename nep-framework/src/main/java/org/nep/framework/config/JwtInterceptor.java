@@ -19,17 +19,20 @@ public class JwtInterceptor implements HandlerInterceptor {
         }
 
         String path = request.getRequestURI();
-        // 放行路径：登录、注册、API文档、公开浏览接口
+        // 放行路径：登录、注册、API文档、公开浏览接口、文件上传
         if (path.contains("/login") || path.contains("/register")
                 || path.contains("/doc.html") || path.contains("/webjars")
                 || path.contains("/v3/api-docs") || path.contains("/images/")
+                || path.contains("/upload/")
                 || path.contains("/api/ai/")
                 || path.contains("/api/region/")
                 || path.contains("/api/news/")
                 || path.contains("/api/knowledge/")
                 || path.contains("/api/banner/")
                 || path.contains("/api/dict/")
-                || path.contains("/api/statistics/")) {
+                || path.contains("/api/statistics/")
+                || path.contains("/api/file/")
+                || path.contains("/api/dashboard/")) {
             return true;
         }
 

@@ -80,7 +80,7 @@ CREATE TABLE nep_supervision_feedback (
     specific_address VARCHAR(500) COMMENT '具体地址',
     estimated_aqi_level INT COMMENT '预估AQI等级(1-6)',
     description VARCHAR(2000) COMMENT '描述',
-    status VARCHAR(20) NOT NULL DEFAULT 'PENDING' COMMENT '状态: PENDING/ASSIGNED/COMPLETED',
+    status TINYINT NOT NULL DEFAULT 0 COMMENT '状态: 0-待指派, 1-已指派, 2-已完成',
     assigned_inspector_id BIGINT COMMENT '指派的网格员ID',
     assign_time TIMESTAMP NULL COMMENT '指派时间',
     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -88,8 +88,7 @@ CREATE TABLE nep_supervision_feedback (
     deleted TINYINT DEFAULT 0 COMMENT '逻辑删除',
     KEY idx_supervisor (supervisor_id),
     KEY idx_status (status),
-    KEY idx_province (province_id),
-    KEY idx_city (city_id)
+    KEY idx_province_city (province_id, city_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='公众监督反馈表';
 
 -- =====================================================
@@ -113,8 +112,7 @@ CREATE TABLE nep_aqi_detection (
     deleted TINYINT DEFAULT 0 COMMENT '逻辑删除',
     KEY idx_feedback (feedback_id),
     KEY idx_inspector (inspector_id),
-    KEY idx_province (province_id),
-    KEY idx_city (city_id),
+    KEY idx_province_city (province_id, city_id),
     KEY idx_final_aqi (final_aqi)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='AQI检测数据表';
 
@@ -389,9 +387,9 @@ INSERT INTO nep_dict_data (dict_type, dict_label, dict_value, css_class, list_cl
 ('sys_user_role', '网格员', 'NEPG', '', 'success', 0, 2, 1),
 ('sys_user_role', '管理员', 'NEPM', '', 'danger', 0, 3, 1),
 ('sys_user_role', '访客', 'NEPV', '', 'info', 0, 4, 1),
-('feedback_status', '待指派', 'PENDING', '', 'warning', 1, 1, 1),
-('feedback_status', '已指派', 'ASSIGNED', '', 'primary', 0, 2, 1),
-('feedback_status', '已完成', 'COMPLETED', '', 'success', 0, 3, 1),
+('feedback_status', '待指派', '0', '', 'warning', 1, 1, 1),
+('feedback_status', '已指派', '1', '', 'primary', 0, 2, 1),
+('feedback_status', '已完成', '2', '', 'success', 0, 3, 1),
 ('news_type', '环保新闻', 'NEWS', '', 'primary', 1, 1, 1),
 ('news_type', '系统公告', 'NOTICE', '', 'warning', 0, 2, 1),
 ('news_type', '政策法规', 'POLICY', '', 'success', 0, 3, 1),

@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.nep.common.result.PageResult;
 import org.nep.common.result.Result;
 import org.nep.system.entity.SupervisionFeedback;
+import org.nep.system.enums.FeedbackStatusEnum;
 import org.nep.system.service.SupervisionFeedbackService;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,11 +33,30 @@ public class FeedbackController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Long assignedInspectorId) {
         LambdaQueryWrapper<SupervisionFeedback> w = new LambdaQueryWrapper<>();
-        if (status != null && !status.isEmpty()) w.eq(SupervisionFeedback::getStatus, status);
+        if (status != null && !status.isEmpty()) {
+            FeedbackStatusEnum statusEnum = parseStatus(status);
+            if (statusEnum != null) {
+                w.eq(SupervisionFeedback::getStatus, statusEnum);
+            }
+        }
         if (assignedInspectorId != null) w.eq(SupervisionFeedback::getAssignedInspectorId, assignedInspectorId);
         w.orderByDesc(SupervisionFeedback::getCreateTime);
         Page<SupervisionFeedback> r = feedbackService.page(new Page<>(page, size), w);
         return PageResult.ok(r.getRecords(), r.getCurrent(), r.getSize(), r.getTotal());
+    }
+
+    private FeedbackStatusEnum parseStatus(String status) {
+        try {
+            int code = Integer.parseInt(status);
+            return FeedbackStatusEnum.fromCode(code);
+        } catch (NumberFormatException e) {
+            for (FeedbackStatusEnum eNum : FeedbackStatusEnum.values()) {
+                if (eNum.name().equalsIgnoreCase(status)) {
+                    return eNum;
+                }
+            }
+        }
+        return null;
     }
 
     @Operation(summary = "详情")

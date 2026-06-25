@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.nep.common.base.BaseEntity;
+import org.nep.system.enums.FeedbackStatusEnum;
 import java.time.LocalDateTime;
 
 @Data
@@ -16,7 +17,8 @@ public class SupervisionFeedback extends BaseEntity {
     private String specificAddress;
     private Integer estimatedAqiLevel;
     private String description;
-    private String status;
+    /** 状态: 0-待指派, 1-已指派, 2-已完成 */
+    private FeedbackStatusEnum status;
     private Long assignedInspectorId;
     private LocalDateTime assignTime;
 }

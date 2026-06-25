@@ -9,8 +9,14 @@ spring:
     password: 1234
     url: jdbc:mysql://localhost:3306/nep_db?useUnicode=true&characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 15
+      minimum-idle: 5
+      idle-timeout: 300000
+      connection-timeout: 20000
+      max-lifetime: 1800000
   main:
-    allow-circular-references: true
+    allow-circular-references: false
   cloud:
     nacos:
       discovery:
@@ -40,6 +46,7 @@ spring:
 
 # MyBatis-Plus
 mybatis-plus:
+  type-enums-package: org.nep.system.enums   # 枚举扫描路径（@EnumValue 映射）
   configuration:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   global-config:

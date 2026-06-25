@@ -93,6 +93,7 @@ const changingPwd = ref(false)
 const loading = ref(true)
 const avatar = ref('')
 const userId = ref(null)
+const avatarUpdating = ref(false)
 
 const form = ref({ phone: '', realName: '', age: 25, gender: 1, role: '', createTime: '' })
 const pwdForm = ref({ oldPassword: '', newPassword: '' })
@@ -114,7 +115,31 @@ async function loadProfile() {
   } catch(e) {} finally { loading.value = false }
 }
 
-function saveAvatar(url) { avatar.value = url; doSave({ avatar: url }) }
+async function saveAvatar(url) {
+  if (!url || typeof url !== 'string' || !userId.value) {
+    ElMessage.warning('头像地址无效，请重新上传')
+    return
+  }
+  
+  avatar.value = url
+  avatarUpdating.value = true
+  
+  try {
+    const avatarUrl = String(url)
+    const res = await updateUser(userId.value, { avatar: avatarUrl })
+    if (res && res.code === 200) {
+      ElMessage.success('头像保存成功')
+      await userStore.fetchUser()
+    } else {
+      throw new Error(res?.message || '保存失败')
+    }
+  } catch (error) {
+    const msg = error?.response?.data?.message || error?.message || '头像保存失败，请重试'
+    ElMessage.error(msg)
+  } finally {
+    avatarUpdating.value = false
+  }
+}
 
 async function doSave(extra) {
   saving.value = true

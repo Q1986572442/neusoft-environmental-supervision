@@ -8,7 +8,11 @@ import org.nep.system.entity.City;
 import org.nep.system.entity.Province;
 import org.nep.system.mapper.CityMapper;
 import org.nep.system.mapper.ProvinceMapper;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import java.util.List;
 
 @Tag(name = "区域管理")

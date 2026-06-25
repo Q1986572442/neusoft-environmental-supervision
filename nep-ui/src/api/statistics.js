@@ -1,0 +1,26 @@
+import request from './index'
+
+/** 系统总览统计 */
+export function getOverview() {
+  return request.get('/statistics/overview')
+}
+
+/** 反馈状态分布 */
+export function getFeedbackStatus() {
+  return request.get('/statistics/feedback-status')
+}
+
+/** AQI等级分布 */
+export function getAqiDistribution() {
+  return request.get('/statistics/aqi-distribution')
+}
+
+/** 各省份反馈统计 */
+export function getProvinceFeedback() {
+  return request.get('/statistics/province-feedback')
+}
+
+/** 月度反馈趋势 */
+export function getMonthlyTrend() {
+  return request.get('/statistics/monthly-trend')
+}

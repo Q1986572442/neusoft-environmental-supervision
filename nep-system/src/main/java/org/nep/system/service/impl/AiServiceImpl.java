@@ -7,14 +7,15 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.io.*;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class AiServiceImpl implements AiService {
@@ -43,17 +44,17 @@ public class AiServiceImpl implements AiService {
         new Thread(() -> {
             try {
                 String body = buildJsonBody(message, true);
-                java.net.http.HttpClient client = java.net.http.HttpClient.newBuilder()
+                HttpClient client = HttpClient.newBuilder()
                         .connectTimeout(Duration.ofSeconds(10))
                         .build();
-                java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                HttpRequest request = HttpRequest.newBuilder()
                         .uri(URI.create(API_URL))
                         .header("Content-Type", "application/json")
                         .header("Authorization", "Bearer " + API_KEY)
-                        .POST(java.net.http.HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
+                        .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
                         .build();
 
-                client.send(request, java.net.http.HttpResponse.BodyHandlers.ofLines()).body()
+                client.send(request, HttpResponse.BodyHandlers.ofLines()).body()
                         .forEach(line -> {
                             if (line.startsWith("data: ")) {
                                 String data = line.substring(6);

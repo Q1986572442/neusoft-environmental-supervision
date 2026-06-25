@@ -28,6 +28,9 @@ export function getMyDetections(inspectorId) {
   return request.get(`/aqi/my/${inspectorId}`)
 }
 
+/** 别名 */
+export const getMyAqiRecords = getMyDetections
+
 /**
  * 获取统计数据
  */

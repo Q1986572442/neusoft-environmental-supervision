@@ -10,8 +10,10 @@ export function submitFeedback(data) {
 /**
  * 分页查询反馈列表
  */
-export function getFeedbackPage(page = 1, size = 10, status = '') {
-  return request.get('/feedback/page', { params: { page, size, status } })
+export function getFeedbackPage(page = 1, size = 10, status = '', assignedInspectorId = null) {
+  const params = { page, size, status }
+  if (assignedInspectorId) params.assignedInspectorId = assignedInspectorId
+  return request.get('/feedback/page', { params })
 }
 
 /**

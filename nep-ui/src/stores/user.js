@@ -14,6 +14,8 @@ export const useUserStore = defineStore('user', () => {
     localStorage.setItem('token', data.token)
     localStorage.setItem('userId', data.user.id)
     localStorage.setItem('userRole', data.user.role)
+    localStorage.setItem('userName', data.user.realName || '')
+    localStorage.setItem('employeeCode', data.user.employeeCode || '')
     return data
   }
 

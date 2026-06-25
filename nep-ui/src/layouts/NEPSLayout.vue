@@ -24,7 +24,7 @@
 
       <div class="topbar-section right-section">
         <button class="icon-action-btn"><el-icon><Search /></el-icon></button>
-        <button class="icon-action-btn notification-btn">
+        <button class="icon-action-btn notification-btn" @click="$router.push('/ne/notifications')">
           <el-icon><Bell /></el-icon>
           <div class="notification-badge"></div>
         </button>
@@ -43,7 +43,7 @@
               <el-dropdown-item class="info-row" style="pointer-events: none;">
                 <span class="dropdown-role">{{ roleName }}</span>
               </el-dropdown-item>
-              <el-dropdown-item divided @click="$router.push('/profile')">个人中心</el-dropdown-item>
+              <el-dropdown-item divided @click="$router.push('/ne/profile')">个人中心</el-dropdown-item>
               <el-dropdown-item @click="handleLogout" class="danger-action">退出登录</el-dropdown-item>
             </el-dropdown-menu>
           </template>
@@ -90,35 +90,33 @@ import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { ElMessageBox } from 'element-plus'
 import { 
-  Platform, HomeFilled, Document, DataLine, EditPen,
-  PieChart, ChatDotRound, Setting, Bell, Search, UserFilled
+  Platform, HomeFilled, Document, EditPen,
+  ChatDotRound, Bell, Search, UserFilled,
+  Reading, Collection
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 
-const role = computed(() => userStore.getRole())
-
-const roleName = computed(() => {
-  const map = { 'NEPS': '公众监督员', 'NEPG': '网格员', 'NEPM': '系统管理员', 'NEPV': '决策者' }
-  return map[role.value] || '系统用户'
-})
+// 角色直接写死为公众监督员
+const roleName = '公众监督员'
 
 const avatarUrl = computed(() => {
   const av = userStore.user?.avatar
   return av && av.length > 0 ? av : ''
 })
 
+// 菜单项简化，专属于公众监督员，路径匹配 index.js 里的子路由
 const dynamicMenuItems = computed(() => {
-  const items = [{ path: '/home', title: '全局概览', icon: HomeFilled, show: true }]
-  if (role.value === 'NEPS' || role.value === 'NEPM') items.push({ path: '/feedback', title: '监督反馈', icon: Document, show: true })
-  if (role.value === 'NEPS') items.push({ path: '/feedback/submit', title: '提交反馈', icon: EditPen, show: true })
-  if (role.value === 'NEPG' || role.value === 'NEPM') items.push({ path: '/aqi', title: 'AQI 监测', icon: DataLine, show: true })
-  if (role.value === 'NEPM' || role.value === 'NEPV') items.push({ path: '/statistics', title: '数据大盘', icon: PieChart, show: true })
-  items.push({ path: '/ai', title: 'AI 助手', icon: ChatDotRound, show: true })
-  if (role.value === 'NEPM') items.push({ path: '/admin/dashboard', title: '管理后台', icon: Setting, show: true })
-  return items.filter(item => item.show)
+  return [
+    { path: '/ne/home', title: '首页概览', icon: HomeFilled },
+    { path: '/ne/submit', title: '提交反馈', icon: EditPen },
+    { path: '/ne/feedbacks', title: '我的反馈', icon: Document },
+    { path: '/ne/news', title: '环保新闻', icon: Reading },
+    { path: '/ne/knowledge', title: '环保知识', icon: Collection },
+    { path: '/ne/ai', title: 'AI助手', icon: ChatDotRound }
+  ]
 })
 
 const handleLogout = () => {

@@ -24,14 +24,16 @@ public class FeedbackController {
         return Result.ok("反馈提交成功", feedbackService.submit(f));
     }
 
-    @Operation(summary = "分页查询")
+    @Operation(summary = "分页查询（支持按状态、指派网格员筛选）")
     @GetMapping("/page")
     public PageResult<java.util.List<SupervisionFeedback>> page(
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size,
-            @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Long assignedInspectorId) {
         LambdaQueryWrapper<SupervisionFeedback> w = new LambdaQueryWrapper<>();
         if (status != null && !status.isEmpty()) w.eq(SupervisionFeedback::getStatus, status);
+        if (assignedInspectorId != null) w.eq(SupervisionFeedback::getAssignedInspectorId, assignedInspectorId);
         w.orderByDesc(SupervisionFeedback::getCreateTime);
         Page<SupervisionFeedback> r = feedbackService.page(new Page<>(page, size), w);
         return PageResult.ok(r.getRecords(), r.getCurrent(), r.getSize(), r.getTotal());

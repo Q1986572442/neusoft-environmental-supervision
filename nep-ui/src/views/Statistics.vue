@@ -19,8 +19,8 @@
       </div>
     </section>
 
-    <section class="stretch-section scrollable-card glass-panel">
-      
+    <section class="stretch-section scrollable-card glass-panel" v-loading="loading">
+
       <div class="panel-header">
         <h3 class="panel-title"><el-icon><DataAnalysis /></el-icon> 宏观态势总览</h3>
       </div>
@@ -92,8 +92,10 @@
 <script setup>
 import { ref, shallowRef, onMounted, onUnmounted, markRaw } from 'vue'
 import * as echarts from 'echarts'
-import { 
-  Filter, Download, DataAnalysis, Location, Warning, 
+import { getDashboard } from '@/api/statistics'
+import { ElMessage } from 'element-plus'
+import {
+  Filter, Download, DataAnalysis, Location, Warning,
   CircleCheck, Odometer, TrendCharts, PieChart, Aim, Histogram
 } from '@element-plus/icons-vue'
 
@@ -103,16 +105,20 @@ const pieChartRef = ref(null)
 const radarChartRef = ref(null)
 const barChartRef = ref(null)
 
+// 加载状态
+const loading = ref(false)
+const kpisReady = ref(false)
+
 // 存储 ECharts 实例，使用 shallowRef 避免 Vue 响应式代理带来的极度卡顿
 const chartInstances = shallowRef([])
 
-// 顶部 KPI 数据
-const kpis = [
-  { label: '环境监控网格节点', value: '1,024', unit: '个', icon: Location, color: '#409EFF' },
-  { label: '近三十日异常预警', value: '238', unit: '次', icon: Warning, color: '#F5A623' },
-  { label: '污染源追踪闭环率', value: '94.2', unit: '%', icon: CircleCheck, color: '#2AA876' },
-  { label: '年度优良天数累计', value: '286', unit: '天', icon: Odometer, color: '#85C77A' }
-]
+// 顶部 KPI 数据 — 动态绑定
+const kpis = ref([
+  { label: '环境监控网格节点', value: '0', unit: '个', icon: Location, color: '#409EFF' },
+  { label: '近三十日异常预警', value: '0', unit: '次', icon: Warning, color: '#F5A623' },
+  { label: '污染源追踪闭环率', value: '0.0', unit: '%', icon: CircleCheck, color: '#2AA876' },
+  { label: '年度优良天数累计', value: '0', unit: '天', icon: Odometer, color: '#85C77A' }
+])
 
 // 极致的 Apple 玻璃化 Tooltip 设定
 const glassTooltip = {
@@ -124,11 +130,17 @@ const glassTooltip = {
   extraCssText: 'backdrop-filter: blur(24px); box-shadow: 0 12px 32px rgba(0,0,0,0.08); border-radius: 12px;'
 }
 
-const initCharts = () => {
+const initCharts = (dashboardData) => {
   const lineChart = markRaw(echarts.init(lineChartRef.value))
   const pieChart = markRaw(echarts.init(pieChartRef.value))
   const radarChart = markRaw(echarts.init(radarChartRef.value))
   const barChart = markRaw(echarts.init(barChartRef.value))
+
+  // 从接口数据中提取图表所需数据
+  const aqiTrend = dashboardData.aqiTrend || []
+  const aqiDistribution = dashboardData.aqiDistribution || []
+  const radar = dashboardData.radar || {}
+  const provinceAnomalies = dashboardData.provinceAnomalies || []
 
   // 1. 流动折线图 (AQI 态势)
   lineChart.setOption({
@@ -136,7 +148,7 @@ const initCharts = () => {
     grid: { top: 30, right: 20, bottom: 20, left: 40, containLabel: true },
     xAxis: {
       type: 'category', boundaryGap: false,
-      data: ['06-01', '06-02', '06-03', '06-04', '06-05', '06-06', '06-07'],
+      data: aqiTrend.map(d => d.date),
       axisLine: { show: false }, axisTick: { show: false },
       axisLabel: { color: '#74807B', margin: 16 }
     },
@@ -155,7 +167,7 @@ const initCharts = () => {
           { offset: 1, color: 'rgba(42, 168, 118, 0.0)' }
         ])
       },
-      data: [42, 65, 58, 85, 120, 95, 62],
+      data: aqiTrend.map(d => d.aqi),
       animationEasing: 'elasticOut', animationDuration: 2400
     }]
   })
@@ -168,13 +180,11 @@ const initCharts = () => {
       type: 'pie', radius: ['30%', '70%'], center: ['50%', '45%'], roseType: 'area',
       itemStyle: { borderRadius: 8, borderColor: '#F4F6F5', borderWidth: 2, shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.05)' },
       label: { show: false },
-      data: [
-        { value: 45, name: '优', itemStyle: { color: '#2AA876' } },
-        { value: 30, name: '良', itemStyle: { color: '#85C77A' } },
-        { value: 15, name: '轻度', itemStyle: { color: '#F5A623' } },
-        { value: 8, name: '中度', itemStyle: { color: '#E87A31' } },
-        { value: 2, name: '重度', itemStyle: { color: '#D9534F' } }
-      ],
+      data: aqiDistribution.map(d => ({
+        value: d.value,
+        name: d.name,
+        itemStyle: { color: d.color }
+      })),
       animationEasing: 'elasticOut', animationDuration: 2000
     }]
   })
@@ -184,9 +194,9 @@ const initCharts = () => {
     tooltip: { ...glassTooltip },
     radar: {
       indicator: [
-        { name: 'SO₂', max: 100 }, { name: 'NO₂', max: 100 },
-        { name: 'PM10', max: 150 }, { name: 'PM2.5', max: 150 },
-        { name: 'O₃', max: 100 }, { name: 'CO', max: 10 }
+        { name: 'SO₂', max: 100 }, { name: 'CO', max: 10 },
+        { name: 'NO₂', max: 100 }, { name: 'PM10', max: 150 },
+        { name: 'PM2.5', max: 150 }, { name: 'O₃', max: 100 }
       ],
       radius: '65%', center: ['50%', '50%'], splitNumber: 4,
       axisName: { color: '#1C2421', fontWeight: 600, fontSize: 11 },
@@ -198,7 +208,7 @@ const initCharts = () => {
       type: 'radar', symbol: 'none',
       lineStyle: { width: 3, color: '#409EFF', shadowBlur: 12, shadowColor: 'rgba(64, 158, 255, 0.4)', shadowOffsetY: 4 },
       areaStyle: { color: 'rgba(64, 158, 255, 0.15)' },
-      data: [{ value: [42, 35, 80, 65, 45, 4], name: '实时指标浓度' }],
+      data: [{ value: [radar.so2 || 0, radar.co || 0, radar.no2 || 0, radar.pm10 || 0, radar.pm25 || 0, radar.o3 || 0], name: '实时指标浓度' }],
       animationEasing: 'cubicOut', animationDuration: 2000
     }]
   })
@@ -208,7 +218,7 @@ const initCharts = () => {
     tooltip: { trigger: 'axis', ...glassTooltip, axisPointer: { type: 'shadow' } },
     grid: { top: 30, right: 20, bottom: 20, left: 40, containLabel: true },
     xAxis: {
-      type: 'category', data: ['河北', '山西', '山东', '河南', '辽宁', '陕西'],
+      type: 'category', data: provinceAnomalies.map(d => d.name),
       axisLine: { show: false }, axisTick: { show: false },
       axisLabel: { color: '#74807B', margin: 16 }
     },
@@ -226,7 +236,7 @@ const initCharts = () => {
           { offset: 1, color: 'rgba(245, 166, 35, 0.1)' }
         ])
       },
-      data: [155, 199, 189, 170, 118, 157],
+      data: provinceAnomalies.map(d => d.value),
       animationEasing: 'elasticOut', animationDuration: 2000,
       animationDelay: (idx) => idx * 100
     }]
@@ -241,8 +251,38 @@ const handleResize = () => {
   })
 }
 
-onMounted(() => {
-  initCharts()
+onMounted(async () => {
+  loading.value = true
+  try {
+    const res = await getDashboard()
+    const data = res.data
+
+    // 更新 KPI 卡片
+    if (data.kpi) {
+      kpis.value = [
+        { label: '环境监控网格节点', value: String(data.kpi.gridNodes || 0), unit: '个', icon: Location, color: '#409EFF' },
+        { label: '近三十日异常预警', value: String(data.kpi.monthlyAlerts || 0), unit: '次', icon: Warning, color: '#F5A623' },
+        { label: '污染源追踪闭环率', value: String(data.kpi.closureRate || 0), unit: '%', icon: CircleCheck, color: '#2AA876' },
+        { label: '年度优良天数累计', value: String(data.kpi.goodAirDays || 0), unit: '天', icon: Odometer, color: '#85C77A' }
+      ]
+    }
+    kpisReady.value = true
+
+    // 初始化图表
+    initCharts(data)
+  } catch (e) {
+    ElMessage.error('统计数据加载失败: ' + (e.message || '网络异常'))
+    // 空数据兜底: 确保图表仍可渲染
+    initCharts({
+      aqiTrend: [],
+      aqiDistribution: [],
+      radar: {},
+      provinceAnomalies: []
+    })
+  } finally {
+    loading.value = false
+  }
+
   window.addEventListener('resize', handleResize)
 })
 

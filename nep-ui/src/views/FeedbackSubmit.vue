@@ -150,6 +150,8 @@ const form = ref({
   provinceId: null,
   cityId: null,
   specificAddress: '',
+  longitude: null,
+  latitude: null,
   estimatedAqiLevel: null,
   description: '',
   supervisorId: 1

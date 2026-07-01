@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import * as userApi from '@/api/user'
 
 export const useUserStore = defineStore('user', () => {
@@ -37,9 +37,10 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
+  const userName = computed(() => user.value?.realName || localStorage.getItem('userName') || '')
   function isLoggedIn() { return !!localStorage.getItem('token') }
   function getRole() { return localStorage.getItem('userRole') || '' }
   function isAdmin() { return getRole() === 'NEPM' }
 
-  return { user, token, login, register, logout, fetchUser, isLoggedIn, getRole, isAdmin }
+  return { user, userName, token, login, register, logout, fetchUser, isLoggedIn, getRole, isAdmin }
 })

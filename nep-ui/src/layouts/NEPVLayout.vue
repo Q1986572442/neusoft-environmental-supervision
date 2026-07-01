@@ -32,11 +32,13 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
-const userName = ref(localStorage.getItem('userName') || '决策者')
+const userStore = useUserStore()
+const userName = computed(() => userStore.userName || '决策者')
 
 function handleLogout() { localStorage.clear(); router.push('/login') }
 </script>

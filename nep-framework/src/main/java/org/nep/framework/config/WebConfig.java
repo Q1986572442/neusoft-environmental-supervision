@@ -24,8 +24,12 @@ public class WebConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(new JwtInterceptor())
                 .addPathPatterns("/api/**")
-                .excludePathPatterns("/api/user/login", "/api/user/register",
-                        "/api/region/**", "/api/images/**");
+                .excludePathPatterns(
+                        "/api/user/login", "/api/user/register",
+                        "/api/region/**", "/api/images/**",
+                        "/api/statistics/**", "/api/news/**",
+                        "/api/knowledge/**", "/api/banner/**",
+                        "/api/dict/**", "/api/aqi/**");
     }
 
     /** 头像文件静态资源映射 */

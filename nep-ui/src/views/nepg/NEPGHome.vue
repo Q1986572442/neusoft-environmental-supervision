@@ -39,10 +39,12 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useUserStore } from '@/stores/user'
 import { getFeedbackPage } from '@/api/feedback'
 import { getMyAqiRecords } from '@/api/aqi'
 
-const userName = ref(localStorage.getItem('userName') || '网格员')
+const userStore = useUserStore()
+const userName = computed(() => userStore.userName || '网格员')
 const employeeCode = ref(localStorage.getItem('employeeCode') || '-')
 const assignedTasks = ref([])
 const myTotalDetections = ref(0)

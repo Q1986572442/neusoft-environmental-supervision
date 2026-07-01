@@ -3,7 +3,11 @@
     <template #header>
       <div class="card-header">
         <span>反馈管理（指派网格员）</span>
-        <el-select v-model="statusFilter" placeholder="全部状态" clearable style="width:140px" @change="handleFilterChange">
+        <div style="display:flex;gap:12px;align-items:center">
+          <el-button size="small" type="success" :loading="exporting" @click="handleExportFeedback">
+            <el-icon><Download /></el-icon> 导出反馈数据
+          </el-button>
+          <el-select v-model="statusFilter" placeholder="全部状态" clearable style="width:140px" @change="handleFilterChange">
           <el-option label="待指派" value="PENDING" />
           <el-option label="已指派" value="ASSIGNED" />
           <el-option label="已完成" value="COMPLETED" />
@@ -105,13 +109,16 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { getFeedbackPage, assignInspector, transferFeedback, batchAssignFeedback } from '@/api/feedback'
 import { getNotesByFeedback, addNote } from '@/api/feedbackNote'
+import { exportFeedback } from '@/api/statistics'
+import { Download } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 
 const feedbacks = ref([])
 const loading = ref(false)
+const exporting = ref(false)
 const page = ref(1)
 const size = ref(10)
 const total = ref(0)
@@ -134,7 +141,9 @@ const currentNotes = ref([])
 const newNoteContent = ref('')
 
 const currentUserId = ref(Number(localStorage.getItem('userId') || 0))
-const currentUserName = ref(localStorage.getItem('userName') || '管理员')
+import { useUserStore } from '@/stores/user'
+const userStore = useUserStore()
+const currentUserName = computed(() => userStore.userName || '管理员')
 
 function formatTime(t) {
   if (!t) return '-'
@@ -169,6 +178,25 @@ async function fetch() {
     total.value = r.total
     selectedIds.value = []
   } catch (e) {} finally { loading.value = false }
+}
+
+async function handleExportFeedback() {
+  exporting.value = true
+  try {
+    const res = await exportFeedback()
+    const blob = new Blob([res], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'NEP反馈数据_' + new Date().toISOString().substring(0,10) + '.xlsx'
+    a.click()
+    URL.revokeObjectURL(url)
+    ElMessage.success('反馈数据导出成功')
+  } catch (e) {
+    ElMessage.error('导出失败')
+  } finally {
+    exporting.value = false
+  }
 }
 
 async function handleAssign(row) {

@@ -3,7 +3,7 @@
 
     <section class="action-console glass-panel fixed-section">
       <div class="console-left">
-        <button class="icon-nav-btn" @click="$router.push('/feedback')" title="返回列表">
+        <button class="icon-nav-btn" @click="$router.push('/ne/feedbacks')" title="返回列表">
           <el-icon>
             <Back />
           </el-icon>
@@ -15,7 +15,7 @@
       </div>
 
       <div class="console-right">
-        <button class="swiss-btn ghost-btn" @click="$router.push('/feedback')">取消</button>
+        <button class="swiss-btn ghost-btn" @click="$router.push('/ne/feedbacks')">取消</button>
         <button class="swiss-btn primary-btn" @click="handleSubmit" :class="{ 'is-loading': submitting }">
           <el-icon v-if="!submitting"><Select /></el-icon>
           <el-icon v-else class="is-spinning">
@@ -38,15 +38,15 @@
         <div class="panel-body scroll-area">
           <el-form ref="formRef" :model="form" :rules="rules" label-position="top" class="mac-inset-form">
             <div class="input-row">
-              <el-form-item label="行政省份" prop="provinceId" class="flex-1">
-                <el-select v-model="form.provinceId" placeholder="选择省份" @change="onProvinceChange"
+              <el-form-item label="所在地区" prop="provinceId" class="flex-1">
+                <el-select v-model="form.provinceId" placeholder="省 / 自治区 / 直辖市" @change="onProvinceChange"
                   popper-class="swiss-select-dropdown" style="width: 100%">
                   <el-option v-for="p in provinces" :key="p.id" :label="p.name" :value="p.id" />
                 </el-select>
               </el-form-item>
 
-              <el-form-item label="所属城市" prop="cityId" class="flex-1">
-                <el-select v-model="form.cityId" placeholder="选择城市" popper-class="swiss-select-dropdown"
+              <el-form-item :label="cityLabel" prop="cityId" class="flex-1">
+                <el-select v-model="form.cityId" :placeholder="cityPlaceholder" popper-class="swiss-select-dropdown"
                   style="width: 100%">
                   <el-option v-for="c in cities" :key="c.id" :label="c.name" :value="c.id" />
                 </el-select>
@@ -132,7 +132,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { submitFeedback } from '@/api/feedback'
 import { getProvinces, getCitiesByProvince } from '@/api/region'
@@ -146,18 +146,23 @@ const submitting = ref(false)
 const provinces = ref([])
 const cities = ref([])
 
+// 直辖市ID：北京1 天津2 上海8 重庆21 → 标签改为"区县"
+const isMunicipality = computed(() => [1, 2, 8, 21].includes(form.value.provinceId))
+const cityLabel = computed(() => isMunicipality.value ? '所属区县' : '所属城市')
+const cityPlaceholder = computed(() => isMunicipality.value ? '选择区县' : '选择城市')
+
 const form = ref({
   provinceId: null,
   cityId: null,
   specificAddress: '',
   estimatedAqiLevel: null,
   description: '',
-  supervisorId: 1
+  supervisorId: Number(localStorage.getItem('userId') || 0)
 })
 
 const rules = {
-  provinceId: [{ required: true, message: '必须选择行政省份', trigger: 'change' }],
-  cityId: [{ required: true, message: '必须选择所属城市', trigger: 'change' }],
+  provinceId: [{ required: true, message: '请选择所在地区', trigger: 'change' }],
+  cityId: [{ required: true, message: '请选择城市或区县', trigger: 'change' }],
   specificAddress: [{ required: true, message: '物理坐标描述不可为空', trigger: 'blur' }],
   estimatedAqiLevel: [{ required: true, message: '请在上方拨盘选择 AQI 等级', trigger: 'change' }],
   description: [{ required: true, message: '现场勘测描述不可为空', trigger: 'blur' }]
@@ -205,7 +210,7 @@ async function handleSubmit() {
   try {
     await submitFeedback(form.value)
     ElMessage.success({ message: '监督反馈档案提报成功！', customClass: 'swiss-message' })
-    router.push('/feedback')
+    router.push('/ne/feedbacks')
   } catch (e) {
   } finally {
     submitting.value = false

@@ -170,22 +170,27 @@
       <div class="calendar-bento scrollable-card">
         <div class="scroll-area custom-calendar-wrapper">
           <el-calendar ref="calendarRef" v-model="currentDate">
+            <template #date-cell="{ data }">
+              <div
+                class="cal-day-cell"
+                :class="{ 'has-feedback': hasFeedback(data.day) }"
+              >
+                <span class="cal-day-num">{{ data.day.split('-').pop() }}</span>
+                <span v-if="hasFeedback(data.day)" class="cal-feedback-dot" title="当天有反馈记录"></span>
+              </div>
+            </template>
             <template #header="{ date }">
               <div class="embedded-cal-header">
                 <span class="cal-title">{{ date }}</span>
                 <div class="cal-actions">
                   <button class="cal-arrow-btn" @click="selectDate('prev-month')" title="上个月">
-                    <el-icon>
-                      <ArrowLeft />
-                    </el-icon>
+                    <el-icon><ArrowLeft /></el-icon>
                   </button>
                   <button class="cal-today-btn" @click="selectDate('today')">
                     <span class="live-dot"></span> 今天
                   </button>
                   <button class="cal-arrow-btn" @click="selectDate('next-month')" title="下个月">
-                    <el-icon>
-                      <ArrowRight />
-                    </el-icon>
+                    <el-icon><ArrowRight /></el-icon>
                   </button>
                 </div>
               </div>
@@ -208,11 +213,14 @@ import {
   Warning, Monitor, DataLine, Reading, Collection
 } from '@element-plus/icons-vue'
 
-const userName = ref(localStorage.getItem('userName') || '公众监督员')
+import { useUserStore } from '@/stores/user'
+const userStore = useUserStore()
+const userName = computed(() => userStore.userName || '公众监督员')
 const feedLoading = ref(false)
 const recentFeedbacks = ref([])
 const currentDate = ref(new Date())
-const calendarRef = ref(null) // 获取日历组件实例
+const calendarRef = ref(null)
+const feedbackDates = ref([])
 const stats = ref({ myFeedbacks: 0, pendingCount: 0, completedCount: 0, aqiTotal: 0 })
 
 const greeting = computed(() => {
@@ -245,6 +253,11 @@ const selectDate = (val) => {
   calendarRef.value.selectDate(val)
 }
 
+// 判断日期是否有反馈记录（日历小圆点标记）
+const hasFeedback = (dateStr) => {
+  return feedbackDates.value.includes(dateStr)
+}
+
 onMounted(async () => {
   feedLoading.value = true
   const uid = localStorage.getItem('userId')
@@ -257,6 +270,10 @@ onMounted(async () => {
       stats.value.myFeedbacks = data.length
       stats.value.pendingCount = data.filter(f => f.status === 'PENDING').length
       stats.value.completedCount = data.filter(f => f.status === 'COMPLETED').length
+      // 提取反馈日期用于日历标记
+      feedbackDates.value = [...new Set(
+        data.filter(f => f.createTime).map(f => f.createTime.substring(0, 10))
+      )]
     } catch (e) { }
   }
 
@@ -750,10 +767,9 @@ onMounted(async () => {
 }
 
 /* =========================================
-   专属定制：无边界嵌入式日历 
+   专属定制：无边界嵌入式日历
    ========================================= */
 .calendar-bento {
-  /* 去除所有的卡片背景与阴影，直接融入底部大背景 */
   background: transparent;
   border: none;
   box-shadow: none;
@@ -804,7 +820,7 @@ onMounted(async () => {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
-/* "今日" 胶囊按钮带生命跳动点 */
+/* "今日" 按钮 */
 .cal-today-btn {
   display: flex;
   align-items: center;
@@ -889,6 +905,7 @@ onMounted(async () => {
   background: rgba(255, 255, 255, 0.6);
 }
 
+/* 今天：绿色数字 */
 .custom-calendar-wrapper :deep(.el-calendar-table td.is-today .el-calendar-day) {
   color: #2AA876;
   font-weight: 700;
@@ -898,6 +915,42 @@ onMounted(async () => {
   background: #2A483A;
   color: #FFF;
   box-shadow: 0 6px 16px rgba(42, 72, 58, 0.25);
+}
+
+/* 日历日期单元格 */
+.cal-day-cell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.cal-day-num {
+  line-height: 1;
+}
+
+/* 有反馈记录的小圆点 */
+.cal-feedback-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #409EFF;
+  animation: dot-appear 0.3s ease-out;
+}
+
+@keyframes dot-appear {
+  from { transform: scale(0); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* 今天所在的单元格有反馈时小圆点变绿 */
+.custom-calendar-wrapper :deep(.el-calendar-table td.is-today) .cal-feedback-dot {
+  background: #2AA876;
+  box-shadow: 0 0 4px rgba(42, 168, 118, 0.5);
 }
 
 @media (max-width: 1200px) {

@@ -16,6 +16,10 @@
     <modules>
         <module>nep-common</module>
         <module>nep-framework</module>
+        <module>nep-service-user</module>
+        <module>nep-service-feedback</module>
+        <module>nep-service-content</module>
+        <module>nep-gateway</module>
         <module>nep-system</module>
         <module>nep-generator</module>
     </modules>
@@ -46,6 +50,8 @@
         <minio.version>8.5.14</minio.version>
         <spring-cloud.version>2024.0.0</spring-cloud.version>
         <spring-cloud-alibaba.version>2023.0.3.2</spring-cloud-alibaba.version>
+        <sentinel.version>1.8.8</sentinel.version>
+        <spring-boot-cache.version>3.4.7</spring-boot-cache.version>
 
     </properties>
 
@@ -145,6 +151,13 @@
                 <groupId>io.jsonwebtoken</groupId>
                 <artifactId>jjwt-api</artifactId>
                 <version>${jjwt.version}</version>
+            </dependency>
+
+            <!-- Sentinel Transport -->
+            <dependency>
+                <groupId>com.alibaba.csp</groupId>
+                <artifactId>sentinel-transport-simple-http</artifactId>
+                <version>${sentinel.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.jsonwebtoken</groupId>

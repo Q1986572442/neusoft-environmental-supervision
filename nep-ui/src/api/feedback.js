@@ -8,10 +8,10 @@ export function submitFeedback(data) {
 }
 
 /**
- * 分页查询反馈列表
+ * 分页查询反馈列表（支持关键词/日期筛选）
  */
-export function getFeedbackPage(page = 1, size = 10, status = '', assignedInspectorId = null) {
-  const params = { page, size, status }
+export function getFeedbackPage(page = 1, size = 10, status = '', keyword = '', startDate = '', endDate = '', assignedInspectorId = null) {
+  const params = { page, size, status, keyword, startDate, endDate }
   if (assignedInspectorId) params.assignedInspectorId = assignedInspectorId
   return request.get('/feedback/page', { params })
 }
@@ -65,4 +65,11 @@ export function rateFeedback(id, supervisorId, rating, ratingComment) {
  */
 export function batchAssignFeedback(ids, inspectorId) {
   return request.post('/feedback/batch-assign', { ids, inspectorId })
+}
+
+/**
+ * 监督员撤回反馈（仅PENDING状态）
+ */
+export function cancelFeedback(id, supervisorId) {
+  return request.put(`/feedback/cancel/${id}`, null, { params: { supervisorId } })
 }

@@ -4,6 +4,9 @@ import { resolve } from 'path'
 
 export default defineConfig({
   plugins: [vue()],
+  define: {
+    global: 'globalThis'
+  },
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src')
@@ -13,11 +16,16 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://localhost:8081',
+        target: 'http://localhost:9000',
         changeOrigin: true
       },
       '/images': {
-        target: 'http://localhost:8081',
+        target: 'http://localhost:9000',
+        changeOrigin: true
+      },
+      '/ws': {
+        target: 'ws://localhost:8084',
+        ws: true,
         changeOrigin: true
       }
     }

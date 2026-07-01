@@ -99,7 +99,9 @@ const tasks = ref([])
 const expandId = ref(null)
 const submitting = ref(false)
 const currentUserId = ref(Number(localStorage.getItem('userId') || 0))
-const currentUserName = ref(localStorage.getItem('userName') || '网格员')
+import { useUserStore } from '@/stores/user'
+const userStore = useUserStore()
+const currentUserName = computed(() => userStore.userName || '网格员')
 
 // 拒绝
 const rejectVisible = ref(false)

@@ -29,3 +29,13 @@ export function getMonthlyTrend() {
 export function getMapAqi() {
   return request.get('/statistics/map-aqi')
 }
+
+/** 导出空间分析报告 (Excel) */
+export function exportSpatialReport() {
+  return request.get('/export/spatial-report', { responseType: 'blob' })
+}
+
+/** 导出反馈数据 */
+export function exportFeedback() {
+  return request.get('/export/feedback', { responseType: 'blob' })
+}

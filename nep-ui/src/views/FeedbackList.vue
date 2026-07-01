@@ -9,29 +9,48 @@
 
       <div class="console-right">
         <div class="search-capsule">
-          <span class="filter-label">流转阶段</span>
-          <el-select v-model="searchForm.status" placeholder="全景视图" clearable class="swiss-select"
+          <el-icon><Search /></el-icon>
+          <el-input
+            v-model="searchForm.keyword"
+            placeholder="搜索描述/地址..."
+            clearable
+            class="keyword-input"
+            @keyup.enter="handleSearch"
+            @clear="handleSearch"
+          />
+        </div>
+        <div class="search-capsule">
+          <span class="filter-label">日期</span>
+          <el-date-picker
+            v-model="searchForm.dateRange"
+            type="daterange"
+            range-separator="~"
+            start-placeholder="开始"
+            end-placeholder="结束"
+            format="YYYY-MM-DD"
+            value-format="YYYY-MM-DD"
+            class="date-picker"
+            @change="handleSearch"
+          />
+        </div>
+        <div class="search-capsule">
+          <span class="filter-label">状态</span>
+          <el-select v-model="searchForm.status" placeholder="全景" clearable class="swiss-select"
             popper-class="swiss-select-dropdown" @change="handleSearch">
-            <el-option label="全景视图" value="" />
+            <el-option label="全景" value="" />
             <el-option label="待指派" value="PENDING" />
-            <el-option label="网格员处理中" value="ASSIGNED" />
-            <el-option label="案件已归档" value="COMPLETED" />
+            <el-option label="处理中" value="ASSIGNED" />
+            <el-option label="已归档" value="COMPLETED" />
             <el-option label="已拒绝" value="REJECTED" />
             <el-option label="已升级" value="ESCALATED" />
           </el-select>
         </div>
 
-        <div class="divider"></div>
-
-        <button class="swiss-btn icon-btn" @click="handleReset" title="重置视图">
-          <el-icon>
-            <RefreshRight />
-          </el-icon>
-        </button>
-        <button class="swiss-btn primary-btn" @click="$router.push('/feedback/submit')">
-          <el-icon>
-            <Plus />
-          </el-icon> 提报新案件
+        <el-button class="swiss-btn icon-btn" @click="handleReset" title="重置视图">
+          <el-icon><RefreshRight /></el-icon>
+        </el-button>
+        <button class="swiss-btn primary-btn" @click="$router.push('/ne/submit')">
+          <el-icon><Plus /></el-icon> 提报案件
         </button>
       </div>
     </header>
@@ -88,7 +107,11 @@
             <div class="header-left">
               <div class="detail-id-badge">案件 #{{ String(selectedFeedback.id).padStart(5, '0') }}</div>
             </div>
-            <div class="header-right">
+            <div class="header-right" style="display:flex;align-items:center;gap:12px">
+              <el-button
+                v-if="selectedFeedback.status === 'PENDING' && selectedFeedback.supervisorId === currentUserId"
+                type="danger" plain size="small" @click="handleCancel"
+              >撤回反馈</el-button>
               <span class="sub-time">立案于 {{ formatTime(selectedFeedback.createTime) }}</span>
             </div>
           </div>
@@ -157,6 +180,37 @@
                 </div>
               </div>
 
+              <!-- AQI 实测数据 (Feature 6) -->
+              <div v-if="aqiData" class="bento-card col-span-2">
+                <div class="bento-icon-header"><el-icon><DataLine /></el-icon><span>网格员实测 AQI 数据</span></div>
+                <div class="aqi-detection-grid">
+                  <div class="aqi-item">
+                    <div class="aqi-item-label">SO₂ (二氧化硫)</div>
+                    <div class="aqi-item-value" :class="'aqi-text-' + (aqiData.so2Aqi > 2 ? 5 : aqiData.so2Aqi)">等级 {{ aqiData.so2Aqi }}</div>
+                  </div>
+                  <div class="aqi-item">
+                    <div class="aqi-item-label">CO (一氧化碳)</div>
+                    <div class="aqi-item-value" :class="'aqi-text-' + (aqiData.coAqi > 2 ? 5 : aqiData.coAqi)">等级 {{ aqiData.coAqi }}</div>
+                  </div>
+                  <div class="aqi-item">
+                    <div class="aqi-item-label">PM2.5 (悬浮颗粒物)</div>
+                    <div class="aqi-item-value" :class="'aqi-text-' + (aqiData.pm25Aqi > 2 ? 5 : aqiData.pm25Aqi)">等级 {{ aqiData.pm25Aqi }}</div>
+                  </div>
+                  <div class="aqi-item aqi-final">
+                    <div class="aqi-item-label">最终 AQI 等级</div>
+                    <div class="aqi-item-value aqi-final-value" :class="'aqi-text-' + aqiData.finalAqi">{{ aqiData.finalAqi }} 级</div>
+                  </div>
+                </div>
+                <div class="aqi-meta" v-if="aqiData.detectionTime">
+                  <el-icon><Clock /></el-icon>
+                  <span>检测时间: {{ formatTime(aqiData.detectionTime) }}</span>
+                </div>
+                <div v-if="aqiData.remark" class="aqi-remark">
+                  <el-icon><Document /></el-icon>
+                  <span>{{ aqiData.remark }}</span>
+                </div>
+              </div>
+
               <!-- 满意度评价 (Feature 5) -->
               <div v-if="selectedFeedback.status === 'COMPLETED'" class="bento-card col-span-2">
                 <div class="bento-icon-header"><el-icon><Star /></el-icon><span>满意度评价</span></div>
@@ -197,20 +251,21 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { getFeedbackPage, rateFeedback, getFeedbackById } from '@/api/feedback'
+import { ref, computed, onMounted, watch } from 'vue'
+import { getFeedbackPage, rateFeedback, getFeedbackById, cancelFeedback } from '@/api/feedback'
+import { getAqiByFeedbackId } from '@/api/aqi'
 import {
-  RefreshRight, Plus, LocationInformation,
-  Location, DataLine, User, Avatar, Document, Star, WarningFilled
+  RefreshRight, Plus, LocationInformation, Search,
+  Location, DataLine, User, Avatar, Document, Star, WarningFilled, Clock
 } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 const loading = ref(false)
 const tableData = ref([])
 const currentPage = ref(1)
 const pageSize = ref(15)
 const total = ref(0)
-const searchForm = ref({ status: '' })
+const searchForm = ref({ status: '', keyword: '', dateRange: null })
 const selectedFeedback = ref(null)
 
 const flowSteps = [
@@ -266,10 +321,28 @@ function selectFeedback(item) {
   selectedFeedback.value = item
 }
 
+// 获取 AQI 实测数据
+const aqiData = ref(null)
+watch(selectedFeedback, async (fb) => {
+  aqiData.value = null
+  if (fb && fb.status === 'COMPLETED') {
+    try {
+      const res = await getAqiByFeedbackId(fb.id)
+      aqiData.value = res.data
+    } catch (e) { /* AQI数据可能尚未提交 */ }
+  }
+})
+
 async function handleSearch() {
   loading.value = true
   try {
-    const res = await getFeedbackPage(currentPage.value, pageSize.value, searchForm.value.status)
+    const range = searchForm.value.dateRange || []
+    const res = await getFeedbackPage(
+      currentPage.value, pageSize.value,
+      searchForm.value.status, searchForm.value.keyword,
+      range.length >= 1 ? range[0] : '',
+      range.length >= 2 ? range[1] : ''
+    )
     tableData.value = res.data
     total.value = res.total
     if (tableData.value.length > 0 && !selectedFeedback.value) {
@@ -281,8 +354,23 @@ async function handleSearch() {
   }
 }
 
+async function handleCancel() {
+  if (!selectedFeedback.value) return
+  try {
+    await ElMessageBox.confirm(
+      '撤回后该反馈将被永久删除，此操作不可恢复。确定要继续吗？',
+      '确认撤回',
+      { confirmButtonText: '确定撤回', cancelButtonText: '取消', type: 'warning' }
+    )
+    await cancelFeedback(selectedFeedback.value.id, currentUserId.value)
+    ElMessage.success('反馈已撤回')
+    selectedFeedback.value = null
+    handleSearch()
+  } catch (e) { /* 用户取消或接口报错 */ }
+}
+
 function handleReset() {
-  searchForm.value.status = ''
+  searchForm.value = { status: '', keyword: '', dateRange: null }
   currentPage.value = 1
   selectedFeedback.value = null
   handleSearch()
@@ -409,12 +497,13 @@ onMounted(() => {
   color: #74807B;
 }
 
-.divider {
-  width: 1px;
-  height: 24px;
-  background: rgba(28, 36, 33, 0.1);
-  margin: 0 4px;
-}
+.divider { display: none; }
+
+.keyword-input { width: 180px; }
+.keyword-input :deep(.el-input__wrapper) { background: transparent !important; box-shadow: none !important; border-radius: 0; }
+
+.date-picker { width: 220px; }
+.date-picker :deep(.el-input__wrapper) { background: transparent !important; box-shadow: none !important; }
 
 .swiss-btn {
   border: none;
@@ -880,6 +969,64 @@ onMounted(() => {
   color: #74807B;
   font-weight: 500;
   margin-top: 2px;
+}
+
+/* AQI实测数据 */
+.aqi-detection-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.aqi-item {
+  background: rgba(28, 36, 33, 0.03);
+  border-radius: 12px;
+  padding: 14px;
+  text-align: center;
+  transition: all 0.3s;
+}
+
+.aqi-item:hover { background: rgba(28, 36, 33, 0.06); }
+
+.aqi-item-label {
+  font-size: 11px;
+  color: #74807B;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.aqi-item-value {
+  font-size: 16px;
+  font-weight: 700;
+  font-family: "SF Pro Display", sans-serif;
+}
+
+.aqi-final {
+  background: rgba(42, 168, 118, 0.08);
+  border: 1px solid rgba(42, 168, 118, 0.2);
+}
+
+.aqi-final-value { font-size: 20px; }
+
+.aqi-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #74807B;
+  margin-top: 12px;
+}
+
+.aqi-remark {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 13px;
+  color: #555;
+  margin-top: 8px;
+  padding: 10px;
+  background: rgba(28, 36, 33, 0.03);
+  border-radius: 8px;
 }
 
 .description-box {

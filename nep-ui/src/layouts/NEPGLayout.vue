@@ -62,13 +62,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useUserStore } from '@/stores/user'
 import { getUnreadCount } from '@/api/notification'
 import { getFeedbackPage } from '@/api/feedback'
 
 const router = useRouter()
-const userName = ref(localStorage.getItem('userName') || '网格员')
+const userStore = useUserStore()
+const userName = computed(() => userStore.userName || '网格员')
 const employeeCode = ref(localStorage.getItem('employeeCode') || '-')
 const unreadCount = ref(0)
 const taskCount = ref(0)

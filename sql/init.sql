@@ -351,6 +351,15 @@ CREATE TABLE nep_dict_data (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='数据字典数据表';
 
 -- =====================================================
+-- 测试数据：用户（密码均为 123456 的MD5值）
+-- =====================================================
+INSERT INTO nep_user (phone, password, real_name, age, gender, role, employee_code, province_id, city_id, status) VALUES
+('13800000001', 'e10adc3949ba59abbe56e057f20f883e', '张三', 28, 1, 'NEPS', 'NEPS001', 1, 1, 1),
+('13800000002', 'e10adc3949ba59abbe56e057f20f883e', '李四', 32, 1, 'NEPG', 'NEPG001', 1, 1, 1),
+('13800000003', 'e10adc3949ba59abbe56e057f20f883e', '王五', 35, 0, 'NEPM', 'NEPM001', 1, 1, 1),
+('13800000004', 'e10adc3949ba59abbe56e057f20f883e', '赵六', 40, 1, 'NEPV', 'NEPV001', 1, 1, 1);
+
+-- =====================================================
 -- 测试数据：新闻公告
 -- =====================================================
 INSERT INTO nep_news (title, summary, content, news_type, status, publish_time) VALUES

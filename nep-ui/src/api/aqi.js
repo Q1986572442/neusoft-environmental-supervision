@@ -32,6 +32,13 @@ export function getMyDetections(inspectorId) {
 export const getMyAqiRecords = getMyDetections
 
 /**
+ * 根据反馈ID获取AQI检测数据
+ */
+export function getAqiByFeedbackId(feedbackId) {
+  return request.get(`/aqi/by-feedback/${feedbackId}`)
+}
+
+/**
  * 获取统计数据
  */
 export function getStatistics() {

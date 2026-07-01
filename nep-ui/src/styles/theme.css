@@ -1,0 +1,106 @@
+/* ====================================================
+   东软环保公众监督系统 (NEP) - 全局主题变量
+   支持亮色/暗黑模式切换
+   ==================================================== */
+
+/* ==================== 亮色主题（默认） ==================== */
+:root {
+  /* 主色调 */
+  --color-primary: #2E7D32;
+  --color-primary-light: #4CAF50;
+  --color-primary-dark: #1B5E20;
+  --color-accent: #FF6F00;
+
+  /* 背景 */
+  --bg-page: #F5F7FA;
+  --bg-card: #FFFFFF;
+  --bg-sidebar: #1A2332;
+  --bg-header: #FFFFFF;
+
+  /* 文字 */
+  --text-primary: #1A1A2E;
+  --text-secondary: #6B7280;
+  --text-inverse: #FFFFFF;
+
+  /* 边框 & 分割线 */
+  --border-color: #E5E7EB;
+  --divider: #F0F0F0;
+
+  /* 阴影 */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.10);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+
+  /* 圆角 */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  /* 动画 */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.3s ease;
+}
+
+/* ==================== 暗黑主题 ==================== */
+html.dark {
+  --color-primary: #4CAF50;
+  --color-primary-light: #66BB6A;
+  --color-primary-dark: #388E3C;
+
+  --bg-page: #0F172A;
+  --bg-card: #1E293B;
+  --bg-sidebar: #0B1120;
+  --bg-header: #1E293B;
+
+  --text-primary: #E2E8F0;
+  --text-secondary: #94A3B8;
+  --text-inverse: #FFFFFF;
+
+  --border-color: #334155;
+  --divider: #1E293B;
+
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.5);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.6);
+}
+
+/* ==================== 全局过渡 ==================== */
+* {
+  transition: background-color var(--transition-normal),
+              color var(--transition-normal),
+              border-color var(--transition-normal);
+}
+
+/* ==================== 页面过渡动画 ==================== */
+.page-enter-active {
+  animation: page-in 0.3s ease-out;
+}
+.page-leave-active {
+  animation: page-out 0.2s ease-in;
+}
+
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes page-out {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-8px); }
+}
+
+/* ==================== 骨架屏动画 ==================== */
+@keyframes skeleton-loading {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg,
+    var(--border-color) 25%,
+    var(--bg-page) 50%,
+    var(--border-color) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+  border-radius: var(--radius-sm);
+}

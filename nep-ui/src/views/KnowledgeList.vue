@@ -5,6 +5,17 @@
         <h2 class="page-title">📚 环保知识库</h2>
         <p class="page-subtitle">学习环保知识，提升环境保护意识</p>
       </div>
+      <div class="header-right">
+        <el-input
+          v-model="searchKeyword"
+          placeholder="搜索知识标题..."
+          clearable
+          :prefix-icon="Search"
+          class="search-input"
+          @keyup.enter="onFilterChange"
+          @clear="onFilterChange"
+        />
+      </div>
     </div>
 
     <div class="category-tabs">
@@ -45,6 +56,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { getKnowledgePage } from '@/api/knowledge'
+import { Search } from '@element-plus/icons-vue'
 
 const knowledgeList = ref([])
 const loading = ref(false)
@@ -52,6 +64,7 @@ const page = ref(1)
 const size = ref(9)
 const total = ref(0)
 const filterCategory = ref('')
+const searchKeyword = ref('')
 
 function categoryLabel(c) {
   const map = { AIR: '大气环境', WATER: '水环境', SOIL: '土壤环境', NOISE: '噪声污染', ECOLOGY: '生态保护' }
@@ -68,7 +81,9 @@ function onFilterChange() { page.value = 1; fetchData() }
 async function fetchData() {
   loading.value = true
   try {
-    const params = filterCategory.value ? { category: filterCategory.value } : {}
+    const params = {}
+    if (filterCategory.value) params.category = filterCategory.value
+    if (searchKeyword.value) params.keyword = searchKeyword.value
     const res = await getKnowledgePage(page.value, size.value, params)
     knowledgeList.value = res.data || []
     total.value = res.total || 0
@@ -81,8 +96,11 @@ onMounted(fetchData)
 <style scoped>
 .knowledge-page { max-width: 1200px; margin: 0 auto; padding: 24px; }
 .page-header { padding: 32px; margin-bottom: 24px; }
+.page-header { display: flex; justify-content: space-between; align-items: center; }
 .page-title { font-size: 24px; font-weight: 600; margin: 0 0 8px; color: #1C2421; }
 .page-subtitle { font-size: 14px; color: #74807B; margin: 0; }
+.header-right { flex-shrink: 0; }
+.search-input { width: 260px; }
 .category-tabs { margin-bottom: 24px; display: flex; justify-content: center; }
 .knowledge-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 .knowledge-card { border-radius: 20px; padding: 24px; cursor: pointer; transition: all 0.3s; }

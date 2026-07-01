@@ -74,14 +74,6 @@
           <router-link to="/register" class="link">立即注册</router-link>
         </div>
 
-        <!-- 快速测试 -->
-        <div class="quick-login">
-          <p class="quick-title">快速体验</p>
-          <div class="quick-btns">
-            <el-button size="small" round @click="quickLogin('admin', '123456')">👨‍💼 管理员</el-button>
-            <el-button size="small" round @click="quickLogin('13900139000', '123456')">👤 监督员</el-button>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -120,7 +112,7 @@ const form = ref({ phone: '', password: '' })
 const rules = {
   phone: [
     { required: true, message: '请输入手机号', trigger: 'blur' },
-    { pattern: /^1[3-9]\d{9}$|^admin$/, message: '手机号格式不正确', trigger: 'blur' }
+    { pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确', trigger: 'blur' }
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
@@ -139,11 +131,6 @@ function particleStyle(i) {
   }
 }
 
-async function quickLogin(phone, password) {
-  form.value = { phone, password }
-  await handleLogin()
-}
-
 async function handleLogin() {
   await formRef.value.validate()
   loading.value = true
@@ -152,7 +139,11 @@ async function handleLogin() {
     ElMessage.success('登录成功，欢迎回来！')
     router.push(getRoleHome(data.user.role))
   } catch (e) {
-    // 错误已在拦截器处理
+    // 业务错误和网络错误已在axios拦截器中处理
+    // 此处的异常通常为表单验证失败，Element Plus已展示内联错误提示
+    if (e instanceof Error && e.message) {
+      ElMessage.error(e.message)
+    }
   } finally {
     loading.value = false
   }
@@ -351,27 +342,6 @@ async function handleLogin() {
 }
 
 .link:hover { color: #337ecc; }
-
-/* 快速体验 */
-.quick-login {
-  margin-top: 40px;
-  padding-top: 24px;
-  border-top: 1px solid #f0f0f0;
-  text-align: center;
-}
-
-.quick-title {
-  font-size: 12px;
-  color: #bbb;
-  margin-bottom: 12px;
-  letter-spacing: 1px;
-}
-
-.quick-btns {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-}
 
 /* 粒子 */
 .particles {

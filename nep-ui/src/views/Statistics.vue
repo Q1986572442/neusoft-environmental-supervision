@@ -1,6 +1,6 @@
 <template>
-  <div class="swiss-dashboard">
-    
+  <div class="swiss-dashboard" v-loading="loading">
+
     <section class="action-console glass-panel fixed-section">
       <div class="console-left">
         <div class="title-group">
@@ -8,25 +8,26 @@
           <span class="page-subtitle">环境质量空间计算与生物态感知矩阵</span>
         </div>
       </div>
-      
+
       <div class="console-right">
-        <button class="swiss-btn ghost-btn">
-          <el-icon><Filter /></el-icon> 深度筛选
+        <button class="swiss-btn ghost-btn" @click="refreshData">
+          <el-icon><Filter /></el-icon> 刷新数据
         </button>
-        <button class="swiss-btn primary-btn">
-          <el-icon><Download /></el-icon> 导出空间分析报告
+        <button class="swiss-btn primary-btn" :disabled="exporting" @click="handleExport">
+          <el-icon><Download /></el-icon> {{ exporting ? '生成中...' : '导出空间分析报告' }}
         </button>
       </div>
     </section>
 
     <section class="stretch-section scrollable-card glass-panel">
-      
+
       <div class="panel-header">
         <h3 class="panel-title"><el-icon><DataAnalysis /></el-icon> 宏观态势总览</h3>
+        <span style="font-size:12px;color:#999">数据更新时间: {{ lastUpdate }}</span>
       </div>
 
       <div class="panel-body scroll-area">
-        
+
         <div class="kpi-grid">
           <div class="kpi-card" v-for="kpi in kpis" :key="kpi.label">
             <div class="kpi-icon-box" :style="{ color: kpi.color, backgroundColor: kpi.color + '1A' }">
@@ -40,11 +41,10 @@
         </div>
 
         <div class="chart-bento-grid">
-          
+
           <div class="chart-bento-card col-span-2">
             <div class="breathe-glow glow-primary"></div>
             <div class="breathe-glow glow-secondary"></div>
-            
             <div class="chart-header">
               <el-icon><TrendCharts /></el-icon> 全网环境指数态势 (AQI)
             </div>
@@ -54,7 +54,6 @@
           <div class="chart-bento-card">
             <div class="breathe-glow glow-warning"></div>
             <div class="breathe-glow glow-danger"></div>
-
             <div class="chart-header">
               <el-icon><PieChart /></el-icon> 污染评估聚类分布
             </div>
@@ -64,7 +63,6 @@
           <div class="chart-bento-card">
             <div class="breathe-glow glow-secondary"></div>
             <div class="breathe-glow glow-primary"></div>
-
             <div class="chart-header">
               <el-icon><Aim /></el-icon> 微观指标多维剖析
             </div>
@@ -74,7 +72,6 @@
           <div class="chart-bento-card col-span-2">
             <div class="breathe-glow glow-warning"></div>
             <div class="breathe-glow glow-secondary"></div>
-
             <div class="chart-header">
               <el-icon><Histogram /></el-icon> 省级网格异常频次跃迁
             </div>
@@ -90,53 +87,85 @@
 </template>
 
 <script setup>
-import { ref, shallowRef, onMounted, onUnmounted, markRaw } from 'vue'
+import { ref, computed, shallowRef, onMounted, onUnmounted, markRaw } from 'vue'
 import * as echarts from 'echarts'
-import { 
-  Filter, Download, DataAnalysis, Location, Warning, 
+import { ElMessage } from 'element-plus'
+import {
+  Filter, Download, DataAnalysis, Location, Warning,
   CircleCheck, Odometer, TrendCharts, PieChart, Aim, Histogram
 } from '@element-plus/icons-vue'
+import { getOverview, getFeedbackStatus, getAqiDistribution, getProvinceFeedback, getMonthlyTrend, exportSpatialReport } from '@/api/statistics'
 
-// DOM Refs
+const loading = ref(false)
+const exporting = ref(false)
+const lastUpdate = ref('')
 const lineChartRef = ref(null)
 const pieChartRef = ref(null)
 const radarChartRef = ref(null)
 const barChartRef = ref(null)
-
-// 存储 ECharts 实例，使用 shallowRef 避免 Vue 响应式代理带来的极度卡顿
 const chartInstances = shallowRef([])
 
-// 顶部 KPI 数据
-const kpis = [
-  { label: '环境监控网格节点', value: '1,024', unit: '个', icon: Location, color: '#409EFF' },
-  { label: '近三十日异常预警', value: '238', unit: '次', icon: Warning, color: '#F5A623' },
-  { label: '污染源追踪闭环率', value: '94.2', unit: '%', icon: CircleCheck, color: '#2AA876' },
-  { label: '年度优良天数累计', value: '286', unit: '天', icon: Odometer, color: '#85C77A' }
-]
+// KPI 数据（从API获取）
+const overviewData = ref({})
+const kpis = computed(() => [
+  { label: '环境监控网格节点', value: overviewData.value.totalCities || 0, unit: '个', icon: Location, color: '#409EFF' },
+  { label: '近三十日AQI检测', value: overviewData.value.weekDetections || 0, unit: '次', icon: Warning, color: '#F5A623' },
+  { label: '反馈处理闭环率', value: overviewData.value.totalFeedbacks > 0 ? Math.round((overviewData.value.completedFeedbacks || 0) / overviewData.value.totalFeedbacks * 100) : 0, unit: '%', icon: CircleCheck, color: '#2AA876' },
+  { label: '覆盖城市累计', value: overviewData.value.totalCities || 0, unit: '座', icon: Odometer, color: '#85C77A' }
+])
 
-// 极致的 Apple 玻璃化 Tooltip 设定
+// 导出
+async function handleExport() {
+  exporting.value = true
+  try {
+    const res = await exportSpatialReport()
+    const blob = new Blob([res], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'NEP空间分析报告_' + new Date().toISOString().substring(0,10) + '.xlsx'
+    a.click()
+    URL.revokeObjectURL(url)
+    ElMessage.success('空间分析报告导出成功')
+  } catch (e) {
+    console.error('导出失败:', e)
+    ElMessage.error('导出失败，请稍后重试')
+  } finally {
+    exporting.value = false
+  }
+}
+
+function refreshData() {
+  loadData()
+  ElMessage.success('数据已刷新')
+}
+
 const glassTooltip = {
   backgroundColor: 'rgba(255, 255, 255, 0.85)',
   borderColor: 'rgba(255, 255, 255, 0.9)',
   borderWidth: 1,
   padding: [12, 16],
-  textStyle: { color: '#1C2421', fontSize: 13, fontWeight: 500, fontFamily: 'SF Pro Display' },
+  textStyle: { color: '#1C2421', fontSize: 13, fontWeight: 500 },
   extraCssText: 'backdrop-filter: blur(24px); box-shadow: 0 12px 32px rgba(0,0,0,0.08); border-radius: 12px;'
 }
 
-const initCharts = () => {
+function initCharts(feedbackStatus, aqiDist, provinceData, monthlyData) {
+  disposeCharts()
+
   const lineChart = markRaw(echarts.init(lineChartRef.value))
   const pieChart = markRaw(echarts.init(pieChartRef.value))
   const radarChart = markRaw(echarts.init(radarChartRef.value))
   const barChart = markRaw(echarts.init(barChartRef.value))
 
-  // 1. 流动折线图 (AQI 态势)
+  // 1. 月度趋势折线图
+  const months = (monthlyData || []).map(d => d.month)
+  const monthlyCounts = (monthlyData || []).map(d => d.count)
   lineChart.setOption({
     tooltip: { trigger: 'axis', ...glassTooltip },
     grid: { top: 30, right: 20, bottom: 20, left: 40, containLabel: true },
     xAxis: {
       type: 'category', boundaryGap: false,
-      data: ['06-01', '06-02', '06-03', '06-04', '06-05', '06-06', '06-07'],
+      data: months.length > 0 ? months : ['暂无数据'],
       axisLine: { show: false }, axisTick: { show: false },
       axisLabel: { color: '#74807B', margin: 16 }
     },
@@ -146,7 +175,7 @@ const initCharts = () => {
       axisLabel: { color: '#74807B' }
     },
     series: [{
-      name: '系统合成 AQI', type: 'line', smooth: 0.5, symbol: 'circle', symbolSize: 8,
+      name: 'AQI检测次数', type: 'line', smooth: 0.5, symbol: 'circle', symbolSize: 8,
       itemStyle: { color: '#2AA876', borderColor: '#FFF', borderWidth: 2 },
       lineStyle: { width: 4, shadowBlur: 14, shadowColor: 'rgba(42, 168, 118, 0.4)', shadowOffsetY: 6 },
       areaStyle: {
@@ -155,12 +184,16 @@ const initCharts = () => {
           { offset: 1, color: 'rgba(42, 168, 118, 0.0)' }
         ])
       },
-      data: [42, 65, 58, 85, 120, 95, 62],
+      data: monthlyCounts.length > 0 ? monthlyCounts : [0],
       animationEasing: 'elasticOut', animationDuration: 2400
     }]
   })
 
-  // 2. 南丁格尔玫瑰饼图 (污染聚类)
+  // 2. AQI分布饼图
+  const aqiNames = (aqiDist || []).map(d => d.name.split(' ')[0])
+  const aqiCounts = (aqiDist || []).map(d => d.count)
+  const hasAqiData = aqiCounts.some(c => c > 0)
+  const pieColors = ['#2AA876', '#85C77A', '#F5A623', '#E87A31', '#D9534F', '#8B0000']
   pieChart.setOption({
     tooltip: { trigger: 'item', ...glassTooltip },
     legend: { bottom: 0, icon: 'circle', itemWidth: 8, textStyle: { color: '#74807B', fontWeight: 500 } },
@@ -168,25 +201,20 @@ const initCharts = () => {
       type: 'pie', radius: ['30%', '70%'], center: ['50%', '45%'], roseType: 'area',
       itemStyle: { borderRadius: 8, borderColor: '#F4F6F5', borderWidth: 2, shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.05)' },
       label: { show: false },
-      data: [
-        { value: 45, name: '优', itemStyle: { color: '#2AA876' } },
-        { value: 30, name: '良', itemStyle: { color: '#85C77A' } },
-        { value: 15, name: '轻度', itemStyle: { color: '#F5A623' } },
-        { value: 8, name: '中度', itemStyle: { color: '#E87A31' } },
-        { value: 2, name: '重度', itemStyle: { color: '#D9534F' } }
-      ],
+      data: hasAqiData
+        ? aqiNames.map((name, i) => ({ value: aqiCounts[i], name, itemStyle: { color: pieColors[i] } }))
+        : [{ value: 1, name: '暂无数据', itemStyle: { color: '#ddd' } }],
       animationEasing: 'elasticOut', animationDuration: 2000
     }]
   })
 
-  // 3. 多维物理雷达图 (指标剖析)
+  // 3. 雷达图
   radarChart.setOption({
     tooltip: { ...glassTooltip },
     radar: {
       indicator: [
-        { name: 'SO₂', max: 100 }, { name: 'NO₂', max: 100 },
-        { name: 'PM10', max: 150 }, { name: 'PM2.5', max: 150 },
-        { name: 'O₃', max: 100 }, { name: 'CO', max: 10 }
+        { name: 'SO₂', max: 200 }, { name: 'CO', max: 200 },
+        { name: 'PM2.5', max: 300 }
       ],
       radius: '65%', center: ['50%', '50%'], splitNumber: 4,
       axisName: { color: '#1C2421', fontWeight: 600, fontSize: 11 },
@@ -198,17 +226,20 @@ const initCharts = () => {
       type: 'radar', symbol: 'none',
       lineStyle: { width: 3, color: '#409EFF', shadowBlur: 12, shadowColor: 'rgba(64, 158, 255, 0.4)', shadowOffsetY: 4 },
       areaStyle: { color: 'rgba(64, 158, 255, 0.15)' },
-      data: [{ value: [42, 35, 80, 65, 45, 4], name: '实时指标浓度' }],
+      data: [{ value: [0, 0, 0], name: '实时指标浓度' }],
       animationEasing: 'cubicOut', animationDuration: 2000
     }]
   })
 
-  // 4. 圆角流体柱状图 (省级频次)
+  // 4. 省份统计柱状图
+  const provinceNames = (provinceData || []).slice(0, 10).map(d => d.provinceName || '未知')
+  const provinceCounts = (provinceData || []).slice(0, 10).map(d => d.count || 0)
   barChart.setOption({
     tooltip: { trigger: 'axis', ...glassTooltip, axisPointer: { type: 'shadow' } },
     grid: { top: 30, right: 20, bottom: 20, left: 40, containLabel: true },
     xAxis: {
-      type: 'category', data: ['河北', '山西', '山东', '河南', '辽宁', '陕西'],
+      type: 'category',
+      data: provinceNames.length > 0 ? provinceNames : ['暂无数据'],
       axisLine: { show: false }, axisTick: { show: false },
       axisLabel: { color: '#74807B', margin: 16 }
     },
@@ -218,7 +249,7 @@ const initCharts = () => {
       axisLabel: { color: '#74807B' }
     },
     series: [{
-      name: '异常预警频次', type: 'bar', barWidth: 24,
+      name: 'AQI检测次数', type: 'bar', barWidth: 24,
       itemStyle: {
         borderRadius: [8, 8, 0, 0],
         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
@@ -226,7 +257,7 @@ const initCharts = () => {
           { offset: 1, color: 'rgba(245, 166, 35, 0.1)' }
         ])
       },
-      data: [155, 199, 189, 170, 118, 157],
+      data: provinceCounts.length > 0 ? provinceCounts : [0],
       animationEasing: 'elasticOut', animationDuration: 2000,
       animationDelay: (idx) => idx * 100
     }]
@@ -235,22 +266,49 @@ const initCharts = () => {
   chartInstances.value = [lineChart, pieChart, radarChart, barChart]
 }
 
+function disposeCharts() {
+  chartInstances.value.forEach(c => { try { c.dispose() } catch(e) {} })
+  chartInstances.value = []
+}
+
 const handleResize = () => {
-  chartInstances.value.forEach(chart => {
-    if (chart) chart.resize()
-  })
+  chartInstances.value.forEach(chart => { if (chart) chart.resize() })
+}
+
+async function loadData() {
+  loading.value = true
+  try {
+    const [ov, fs, ad, pf, mt] = await Promise.all([
+      getOverview(),
+      getFeedbackStatus(),
+      getAqiDistribution(),
+      getProvinceFeedback(),
+      getMonthlyTrend()
+    ])
+    overviewData.value = ov.data || {}
+    lastUpdate.value = new Date().toLocaleTimeString()
+
+    initCharts(
+      fs.data,
+      ad.data,
+      pf.data,
+      mt.data
+    )
+  } catch (e) {
+    console.error('加载统计数据失败:', e)
+  } finally {
+    loading.value = false
+  }
 }
 
 onMounted(() => {
-  initCharts()
+  loadData()
   window.addEventListener('resize', handleResize)
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
-  chartInstances.value.forEach(chart => {
-    if (chart) chart.dispose()
-  })
+  disposeCharts()
 })
 </script>
 
@@ -260,7 +318,7 @@ onUnmounted(() => {
    ========================================= */
 
 .swiss-dashboard {
-  max-width: 1440px; width: 100%; height: 100%; 
+  max-width: 1440px; width: 100%; height: 100%;
   margin: 0 auto; display: flex; flex-direction: column; gap: 24px;
   padding-bottom: 32px; box-sizing: border-box; color: #1C2421;
 }
@@ -283,12 +341,11 @@ onUnmounted(() => {
 .panel-title { font-size: 16px; font-weight: 600; color: #1C2421; margin: 0; display: flex; align-items: center; gap: 8px; }
 .panel-title .el-icon { color: #2A483A; font-size: 18px; }
 
-/* 全局唯一滑动区 */
 .scroll-area { flex: 1; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none; padding: 24px 32px 32px; }
 .scroll-area::-webkit-scrollbar { display: none; }
 
 /* =========================================
-   1. 悬浮控制台 (严苛的高低差抹平)
+   1. 悬浮控制台
    ========================================= */
 .action-console {
   height: 120px; padding: 0 48px; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box;
@@ -310,6 +367,7 @@ onUnmounted(() => {
 .swiss-btn.ghost-btn:hover { background: #FFF; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
 .swiss-btn.primary-btn { padding: 0 24px; height: 40px; background: #007AFF; color: #FFF; box-shadow: 0 2px 10px rgba(0, 122, 255, 0.3); }
 .swiss-btn.primary-btn:hover { background: #0066D6; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0, 122, 255, 0.4); }
+.swiss-btn.primary-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* =========================================
    2. KPI 数据网格
@@ -329,7 +387,7 @@ onUnmounted(() => {
 .kpi-label { font-size: 13px; font-weight: 600; color: #74807B; }
 
 /* =========================================
-   3. ECharts 图表便当盒 (生物呼吸材质引擎)
+   3. ECharts 图表便当盒
    ========================================= */
 .chart-bento-grid {
   display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 360px; gap: 24px;
@@ -345,7 +403,6 @@ onUnmounted(() => {
 }
 .chart-bento-card:hover { transform: translateY(-2px) scale(1.005); box-shadow: 0 12px 32px -8px rgba(0,0,0,0.06); background: #FFF; }
 
-/* 生物态液态光晕 */
 .breathe-glow {
   position: absolute; border-radius: 50%; filter: blur(50px); opacity: 0.15;
   z-index: 0; pointer-events: none;
@@ -368,7 +425,6 @@ onUnmounted(() => {
 }
 .chart-header .el-icon { color: #86868B; font-size: 16px; }
 
-/* 保证 ECharts 渲染不塌陷 */
 .chart-canvas { flex: 1; position: relative; z-index: 1; min-height: 0; width: 100%; }
 
 @media (max-width: 1024px) {

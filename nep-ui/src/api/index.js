@@ -19,14 +19,27 @@ request.interceptors.request.use(
   error => Promise.reject(error)
 )
 
-// 响应拦截器 - 401跳转登录
+// 响应拦截器 - 401跳转登录，Blob下载直接放行
 request.interceptors.response.use(
   response => {
-    const data = response.data
-    if (data.code !== 200) {
-      ElMessage.error(data.message || '请求失败')
-      return Promise.reject(new Error(data.message))
+    // 文件下载（Blob）直接返回，不做 JSON code 检查
+    const contentType = response.headers['content-type'] || ''
+    if (contentType.includes('application/vnd.openxmlformats-officedocument') ||
+        contentType.includes('application/octet-stream') ||
+        response.config.responseType === 'blob') {
+      return response.data
     }
+
+    const data = response.data
+    // 兼容 { code: 200 } 和直接返回数据的格式
+    if (data && typeof data === 'object' && data.code !== undefined) {
+      if (data.code !== 200) {
+        ElMessage.error(data.message || '请求失败')
+        return Promise.reject(new Error(data.message))
+      }
+      return data
+    }
+    // 非标准格式直接返回
     return data
   },
   error => {

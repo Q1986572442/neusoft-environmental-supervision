@@ -69,7 +69,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { postComment, getComments, toggleLike } from '@/api/social'
+import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'
+
+const userStore = useUserStore()
 
 const props = defineProps({
   targetType: { type: String, required: true },  // NEWS / KNOWLEDGE / DETECTION
@@ -111,7 +114,7 @@ async function handlePost() {
       targetType: props.targetType,
       targetId: props.targetId,
       userId: props.userId,
-      userName: localStorage.getItem('userName') || '用户',
+      userName: userStore.userName || '用户',
       content: newComment.value
     })
     ElMessage.success('评论发表成功')
@@ -138,7 +141,7 @@ async function handleReply(parent) {
       targetType: props.targetType,
       targetId: props.targetId,
       userId: props.userId,
-      userName: localStorage.getItem('userName') || '用户',
+      userName: userStore.userName || '用户',
       content: replyContent.value,
       parentId: parent.id,
       replyToUid: parent.userId,

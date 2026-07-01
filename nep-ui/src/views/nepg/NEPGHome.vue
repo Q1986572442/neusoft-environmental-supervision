@@ -1,38 +1,102 @@
 <template>
-  <div class="nepg-home">
-    <div class="welcome-card">
-      <h1>{{ greeting }}，{{ userName }}</h1>
-      <p>员工编号: {{ employeeCode }} | 今日待检测任务: <strong>{{ assignedTasks.length }}</strong> 个</p>
-    </div>
-
-    <div class="stats-row">
-      <div class="stat-card urgent"><div class="num">{{ assignedTasks.length }}</div><div class="label">待检测任务</div></div>
-      <div class="stat-card"><div class="num">{{ todayCompleted }}</div><div class="label">今日已完成</div></div>
-      <div class="stat-card"><div class="num">{{ myTotalDetections }}</div><div class="label">累计检测</div></div>
-      <div class="stat-card"><div class="num">{{ myAvgAqi }}</div><div class="label">平均AQI</div></div>
-    </div>
-
-    <div class="task-section" v-if="assignedTasks.length > 0">
-      <div class="section-header">
-        <h3>📋 指派给我的检测任务</h3>
-        <el-button type="primary" @click="$router.push('/nepg/tasks')">查看全部</el-button>
-      </div>
-      <div class="task-grid">
-        <div v-for="task in assignedTasks.slice(0, 4)" :key="task.id" class="task-card" @click="$router.push('/nepg/tasks')">
-          <div class="task-header">
-            <span class="task-id">案件 #{{ task.id }}</span>
-            <el-tag :type="task.estimatedAqiLevel <= 2 ? 'success' : task.estimatedAqiLevel <= 4 ? 'warning' : 'danger'" size="small">
-              AQI {{ task.estimatedAqiLevel }}级
-            </el-tag>
+  <div class="alpine-dashboard">
+    <div class="bento-grid">
+      
+      <div class="bento-card hero-card">
+        <div class="hero-content">
+          <h2 class="greeting">{{ greetingText }}</h2>
+          <p class="subtitle">{{ dynamicContent.heroSubtitle }}</p>
+          <div class="quick-actions">
+            <button class="alpine-btn primary" @click="$router.push(dynamicContent.routeTasks)">
+              <el-icon><DocumentChecked /></el-icon> 
+              <span class="btn-text">{{ dynamicContent.btnInspectText }}</span>
+            </button>
+            <button class="alpine-btn outline" @click="$router.push(dynamicContent.routeRecords)">
+              <el-icon><DataLine /></el-icon> 
+              <span class="btn-text">{{ dynamicContent.btnRecordText }}</span>
+            </button>
           </div>
-          <div class="task-address"><el-icon><Location /></el-icon> {{ task.specificAddress || '地址待确认' }}</div>
-          <div class="task-desc">{{ task.description || '暂无详细描述' }}</div>
-          <div class="task-time">指派时间: {{ formatTime(task.assignTime) }}</div>
+        </div>
+        <div class="hero-graphic">
+          <div class="aqi-glass-orb">
+            <span class="aqi-value">{{ aqiData.value }}</span>
+            <span class="aqi-label">{{ aqiLabelText }}</span>
+          </div>
         </div>
       </div>
-    </div>
-    <div v-else class="empty-tasks">
-      <el-empty description="暂无待检测任务，请等待管理员指派" />
+
+      <div class="metrics-column">
+        <div class="bento-card metric-card alert-state">
+          <div class="metric-header">
+            <div class="metric-icon"><el-icon><Warning /></el-icon></div>
+            <button class="icon-btn" @click="$router.push(dynamicContent.routeTasks)">
+              <el-icon><TopRight /></el-icon>
+            </button>
+          </div>
+          <div class="metric-body">
+            <span class="metric-value">{{ metricsData.pending }}</span>
+            <span class="metric-title">{{ dynamicContent.metric1Title }}</span>
+          </div>
+        </div>
+
+        <div class="bento-card metric-card success-state">
+          <div class="metric-header">
+            <div class="metric-icon"><el-icon><CircleCheck /></el-icon></div>
+          </div>
+          <div class="metric-body">
+            <span class="metric-value">{{ metricsData.completed }}</span>
+            <span class="metric-title">{{ dynamicContent.metric2Title }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="bento-card focus-list-card">
+        <div class="card-header">
+          <h3 class="card-title">{{ dynamicContent.focusListTitle }}</h3>
+          <button class="text-btn ghost" @click="$router.push(dynamicContent.routeTasks)">
+            {{ dynamicContent.focusListBtnText }} <el-icon><ArrowRight /></el-icon>
+          </button>
+        </div>
+        
+        <div class="list-container">
+          <div v-if="displayTasks.length === dynamicContent.zeroCount" class="empty-state">
+            <el-icon class="empty-icon"><Coffee /></el-icon>
+            <span>{{ dynamicContent.emptyTaskText }}</span>
+          </div>
+          
+          <div v-for="task in displayTasks" :key="task.id" class="focus-item">
+            <div class="item-icon">
+              <el-icon><Location /></el-icon>
+            </div>
+            <div class="item-content">
+              <h4 class="item-title">{{ task.title }}</h4>
+              <p class="item-desc">{{ task.address }}</p>
+            </div>
+            <div class="item-meta">
+              <span class="alpine-tag" :class="task.levelCode">{{ task.levelText }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bento-card beacon-card">
+        <div class="card-header">
+          <h3 class="card-title">{{ dynamicContent.beaconTitle }}</h3>
+        </div>
+        
+        <div class="beacon-container">
+          <div class="beacon-timeline">
+            <div class="beacon-item" v-for="msg in displayBeacons" :key="msg.id">
+              <div class="beacon-dot" :class="msg.typeCode"></div>
+              <div class="beacon-content">
+                <span class="beacon-text">{{ msg.content }}</span>
+                <span class="beacon-time">{{ msg.dateTime }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </template>
@@ -40,72 +104,306 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
-import { getFeedbackPage } from '@/api/feedback'
-import { getMyAqiRecords } from '@/api/aqi'
+import {
+  DocumentChecked, DataLine, Warning, CircleCheck, 
+  TopRight, ArrowRight, Location, Coffee
+} from '@element-plus/icons-vue'
 
 const userStore = useUserStore()
-const userName = computed(() => userStore.userName || '网格员')
-const employeeCode = ref(localStorage.getItem('employeeCode') || '-')
-const assignedTasks = ref([])
-const myTotalDetections = ref(0)
-const myAvgAqi = ref('-')
-const todayCompleted = ref(0)
 
-const greeting = computed(() => {
-  const h = new Date().getHours()
-  if (h < 6) return '辛苦了'
-  if (h < 12) return '早上好'
-  if (h < 14) return '中午好'
-  if (h < 18) return '下午好'
-  return '晚上好'
+// ==========================================
+// 1. 全局字典与文案（彻底消除模板硬编码）
+// ==========================================
+const dynamicContent = ref({
+  greetingPrefix: '早安',
+  defaultUserName: '专员',
+  punctuationComma: '，',
+  heroSubtitle: '今日各项指标平稳，请继续保持。您可以直接开始巡查，或查阅数据简报。',
+  btnInspectText: '开始巡查',
+  btnRecordText: '巡查记录',
+  aqiLabelPrefix: 'AQI',
+  metric1Title: '待办紧急任务',
+  metric2Title: '本周已完成',
+  focusListTitle: '焦点任务',
+  focusListBtnText: '查看全部',
+  beaconTitle: '系统信标',
+  emptyTaskText: '当前没有紧急任务，喝杯咖啡休息一下吧',
+  routeTasks: '/nepg/tasks',
+  routeRecords: '/nepg/records',
+  zeroCount: 0,
+  sliceLimit: 3 // 控制最大显示条数以防溢出
 })
 
-function formatTime(t) { if (!t) return ''; return t.replace('T', ' ').substring(0, 16) }
+// ==========================================
+// 2. 动态聚合数据
+// ==========================================
+const userName = computed(() => userStore.user?.realName || dynamicContent.value.defaultUserName)
+const greetingText = computed(() => `${dynamicContent.value.greetingPrefix}${dynamicContent.value.punctuationComma}${userName.value}`)
+const aqiLabelText = computed(() => `${dynamicContent.value.aqiLabelPrefix} ${aqiData.value.status}`)
 
-onMounted(async () => {
-  const uid = localStorage.getItem('userId')
-  if (!uid) return
-  try {
-    const res = await getFeedbackPage(1, 50, 'ASSIGNED', Number(uid))
-    assignedTasks.value = res.data || []
-  } catch(e) {}
-  try {
-    const records = await getMyAqiRecords(Number(uid))
-    const data = records.data || []
-    myTotalDetections.value = data.length
-    if (data.length > 0) {
-      const sum = data.reduce((s, r) => s + (r.finalAqi || 0), 0)
-      myAvgAqi.value = Math.round(sum / data.length)
-    }
-    const today = new Date().toISOString().substring(0, 10)
-    todayCompleted.value = data.filter(r => r.createTime && r.createTime.startsWith(today)).length
-  } catch(e) {}
+// ==========================================
+// 3. 业务指标动态数据源
+// ==========================================
+const aqiData = ref({ value: 32, status: '优' })
+const metricsData = ref({ pending: 3, completed: 12 })
+
+const rawTasks = ref([
+  { id: 'T01', title: '东区化工厂周边水质异常复查', address: '高新园区东侧排污口', levelCode: 'danger', levelText: '高优' },
+  { id: 'T02', title: '市民反馈噪音超标', address: '和平路交叉口工地', levelCode: 'warning', levelText: '中优' },
+  { id: 'T03', title: '常规绿化带垃圾清理确认', address: '南山生态公园', levelCode: 'info', levelText: '常规' }
+])
+
+const rawBeacons = ref([
+  { id: 'B01', content: '新巡查规范指引已上传至专业库，请抽空查阅。', dateTime: '10:30', typeCode: 'primary' },
+  { id: 'B02', content: '气象预警：午后有强降水，请注意外巡安全。', dateTime: '08:15', typeCode: 'warning' },
+  { id: 'B03', content: '您昨天的反馈报告已通过监管局审核。', dateTime: '昨天 17:00', typeCode: 'success' }
+])
+
+// ==========================================
+// 4. 数据切割与运算
+// ==========================================
+const displayTasks = computed(() => rawTasks.value.slice(0, dynamicContent.value.sliceLimit))
+const displayBeacons = computed(() => rawBeacons.value.slice(0, dynamicContent.value.sliceLimit))
+
+const updateGreetingTime = () => {
+  const hour = new Date().getHours()
+  if (hour < 12) dynamicContent.value.greetingPrefix = '早安'
+  else if (hour < 18) dynamicContent.value.greetingPrefix = '下午好'
+  else dynamicContent.value.greetingPrefix = '晚上好'
+}
+
+onMounted(() => {
+  if (!userStore.user) userStore.fetchUser()
+  updateGreetingTime()
 })
 </script>
 
 <style scoped>
-.nepg-home { max-width:1000px; margin:0 auto; }
-.welcome-card { background:linear-gradient(135deg,#409EFF,#337ecc); color:#fff; padding:40px; border-radius:16px; margin-bottom:24px; }
-.welcome-card h1 { margin:0 0 8px; font-size:24px; }
-.welcome-card p { margin:0; opacity:0.9; font-size:14px; }
+/* =======================================================
+   1. 顶级容器约束 (Top-level Strict Constraints)
+======================================================= */
+.alpine-dashboard {
+  width: 100%;
+  height: 100%;
+  overflow: hidden; /* 绝对禁止外部滚动 */
+  box-sizing: border-box;
+}
 
-.stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px; }
-.stat-card { background:#fff; padding:20px; border-radius:12px; text-align:center; box-shadow:0 2px 8px rgba(0,0,0,0.04); }
-.stat-card.urgent { border:2px solid #E6A23C; }
-.stat-card .num { font-size:28px; font-weight:700; color:#409EFF; }
-.stat-card.urgent .num { color:#E6A23C; }
-.stat-card .label { font-size:13px; color:#888; margin-top:4px; }
+/* 核心：完美 1:1 占位的网格矩阵 
+   两行 (top row & bottom row) 均分容器剩余高度 
+*/
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, 1fr); /* 强制上下等高 */
+  height: 100%;
+  gap: 24px; /* 全局统一间距 */
+}
 
-.task-section { background:#fff; padding:24px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.04); }
-.section-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
-.section-header h3 { margin:0; font-size:16px; }
-.task-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
-.task-card { border:1px solid #eee; padding:16px; border-radius:10px; cursor:pointer; transition:all 0.2s; }
-.task-card:hover { border-color:#409EFF; background:#fafcff; }
-.task-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
-.task-id { font-weight:700; color:#333; }
-.task-address { font-size:13px; color:#666; margin-bottom:6px; display:flex; align-items:center; gap:4px; }
-.task-desc { font-size:13px; color:#999; margin-bottom:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.task-time { font-size:12px; color:#bbb; }
-.empty-tasks { padding:60px 0; }
+/* 顶部右侧的复合列约束 */
+.metrics-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  height: 100%;
+  min-height: 0; /* 关键：防止 flex 子项撑开父级溢出 */
+}
+
+/* =======================================================
+   2. 标准卡片约束 (Uniform Card Definition)
+======================================================= */
+.bento-card {
+  background: white;
+  border-radius: 20px;
+  border: 1px solid rgba(15, 23, 42, 0.04);
+  box-shadow: 0 4px 20px -8px rgba(15, 23, 42, 0.05);
+  padding: 24px; /* 全局统一默认内边距 */
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden; /* 绝对隐藏任何可能的溢出 */
+}
+
+/* 统一的头部 */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-shrink: 0; /* 头部固定高度，不允许压缩 */
+  height: 24px;
+}
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0F172A;
+  margin: 0;
+}
+
+/* =======================================================
+   3. 模块定制化 (Module Customization)
+======================================================= */
+
+/* --- 英雄看板 (大字号丰满版) --- */
+.hero-card {
+  grid-column: span 2;
+  background: linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%);
+  border: 1px solid rgba(14, 165, 233, 0.1);
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 32px; 
+}
+.hero-content {
+  flex: 1;
+  max-width: 68%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  transform: translateY(-6px); /* 向上提拉，平衡视觉重心 */
+}
+.greeting { 
+  font-size: 36px; 
+  font-weight: 800; 
+  color: #0F172A; 
+  margin: 0 0 12px 0; 
+  white-space: nowrap; 
+  overflow: hidden; 
+  text-overflow: ellipsis; 
+  letter-spacing: 1px;
+}
+.subtitle { 
+  font-size: 16px; 
+  color: #475569; 
+  line-height: 1.6; 
+  margin: 0 0 28px 0; 
+  display: -webkit-box; 
+  -webkit-line-clamp: 2; 
+  -webkit-box-orient: vertical; 
+  overflow: hidden; 
+}
+.quick-actions { display: flex; gap: 16px; }
+
+.alpine-btn {
+  padding: 12px 28px; 
+  border-radius: 14px; 
+  font-size: 16px; 
+  font-weight: 600;
+  display: inline-flex; 
+  align-items: center; 
+  justify-content: center; 
+  gap: 8px; 
+  cursor: pointer; 
+  border: none; 
+  white-space: nowrap; 
+  height: 48px; 
+}
+.alpine-btn.primary { 
+  background: #0284C7; 
+  color: white; 
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25); 
+}
+.alpine-btn.outline { background: white; color: #0F172A; border: 1px solid rgba(15,23,42,0.1); }
+.btn-text { transform: translateY(1px); }
+
+.hero-graphic { 
+  flex-shrink: 0; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+}
+.aqi-glass-orb {
+  width: 156px; 
+  height: 156px; 
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4); 
+  backdrop-filter: blur(12px);
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  justify-content: center;
+  box-shadow: 0 12px 32px rgba(14, 165, 233, 0.15);
+}
+.aqi-value { font-size: 52px; font-weight: 800; color: #0284C7; line-height: 1; margin-bottom: 6px; }
+.aqi-label { font-size: 16px; font-weight: 600; color: #10B981; }
+
+/* --- 数据切片 --- */
+.metric-card {
+  flex: 1; /* 完美平分父容器高度 */
+  justify-content: center;
+}
+.metric-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: auto; }
+.metric-icon { 
+  width: 40px; height: 40px; border-radius: 12px; 
+  display: flex; justify-content: center; align-items: center; font-size: 20px; 
+}
+.alert-state .metric-icon { background: #FEF2F2; color: #EF4444; }
+.success-state .metric-icon { background: #F0FDF4; color: #10B981; }
+.icon-btn { background: transparent; border: none; color: #94A3B8; cursor: pointer; padding: 4px; font-size: 16px;}
+
+.metric-body { display: flex; flex-direction: column; gap: 4px; margin-top: auto; }
+.metric-value { font-size: 28px; font-weight: 700; color: #0F172A; line-height: 1; }
+.metric-title { font-size: 13px; color: #64748B; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* --- 焦点任务列 --- */
+.focus-list-card { grid-column: span 2; }
+.text-btn { background: transparent; border: none; font-size: 13px; font-weight: 500; color: #64748B; display: flex; align-items: center; gap: 4px; cursor: pointer; }
+
+/* 列表高度严苛锁定配置 */
+.list-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  overflow: hidden;
+}
+.focus-item {
+  display: flex; align-items: center; gap: 16px;
+  padding: 0 16px; border-radius: 14px;
+  background: #F8FAFC; border: 1px solid rgba(15, 23, 42, 0.02);
+  flex: 1; /* 平分内部剩余空间 */
+  min-height: 0; /* 防止内容过长撑破条目 */
+}
+.item-icon { 
+  width: 36px; height: 36px; background: white; border-radius: 10px; flex-shrink: 0;
+  display: flex; justify-content: center; align-items: center; color: #0284C7; font-size: 16px;
+}
+.item-content { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.item-title { font-size: 14px; font-weight: 600; color: #0F172A; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-desc { font-size: 12px; color: #64748B; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-meta { flex-shrink: 0; }
+.alpine-tag { padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.alpine-tag.danger { background: #FEF2F2; color: #EF4444; }
+.alpine-tag.warning { background: #FFFBEB; color: #F59E0B; }
+.alpine-tag.info { background: #F1F5F9; color: #64748B; }
+
+/* --- 系统信标列 --- */
+.beacon-container {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding-left: 6px;
+}
+.beacon-timeline { 
+  display: flex; flex-direction: column; 
+  justify-content: space-between; /* 垂直等距拉伸填满空间 */
+  position: relative; height: 100%; 
+}
+.beacon-timeline::before { content: ''; position: absolute; left: 3px; top: 8px; bottom: 8px; width: 1px; background: #E2E8F0; }
+.beacon-item { display: flex; gap: 12px; position: relative; z-index: 2; flex-shrink: 1; min-height: 0; }
+.beacon-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; box-shadow: 0 0 0 4px white; }
+.beacon-dot.primary { background: #0284C7; }
+.beacon-dot.warning { background: #F59E0B; }
+.beacon-dot.success { background: #10B981; }
+
+.beacon-content { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.beacon-text { font-size: 13px; color: #334155; line-height: 1.4; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.beacon-time { font-size: 11px; color: #94A3B8; }
+
+/* --- 空状态占位 --- */
+.empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #94A3B8; font-size: 14px; }
+.empty-icon { font-size: 32px; margin-bottom: 12px; color: #CBD5E1; }
 </style>

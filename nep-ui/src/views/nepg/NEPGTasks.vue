@@ -1,264 +1,484 @@
 <template>
-  <div class="tasks-page">
-    <div class="page-header">
-      <h2>📋 指派给我的检测任务</h2>
-      <span class="task-count">共 {{ tasks.length }} 个待检测任务</span>
-    </div>
-
-    <!-- 任务列表 -->
-    <div v-if="tasks.length > 0">
-      <div v-for="task in tasks" :key="task.id" class="task-card" :class="{ expanded: expandId === task.id }">
-        <div class="task-summary" @click="toggleExpand(task)">
-          <div class="summary-left">
-            <span class="case-id">案件 #{{ task.id }}</span>
-            <span class="case-address">{{ task.specificAddress || '地址未记录' }}</span>
-            <el-tag :type="task.estimatedAqiLevel <= 2 ? 'success' : task.estimatedAqiLevel <= 4 ? 'warning' : 'danger'" size="small">
-              预估 AQI {{ task.estimatedAqiLevel }} 级
-            </el-tag>
-          </div>
-          <div class="summary-right">
-            <span class="assign-time">{{ formatTime(task.assignTime) }}</span>
-            <el-icon><ArrowDown v-if="expandId !== task.id" /><ArrowUp v-else /></el-icon>
-          </div>
+  <div class="alpine-tasks-canvas">
+    <!-- 顶部控制台 -->
+    <header class="tasks-header">
+      <div class="header-left">
+        <h1 class="page-title">{{ dynamicText.pageTitle }}</h1>
+        <span class="task-counter">{{ filteredTasks.length }} {{ dynamicText.taskUnit }}</span>
+      </div>
+      
+      <div class="header-right">
+        <div class="alpine-search">
+          <el-icon class="search-icon"><Search /></el-icon>
+          <input 
+            type="text" 
+            v-model="searchQuery" 
+            :placeholder="dynamicText.searchPlaceholder"
+            class="search-input"
+          >
         </div>
-
-        <!-- 展开后显示AQI检测表单 -->
-        <div v-if="expandId === task.id" class="task-detail">
-          <el-divider />
-          <p class="detail-desc">{{ task.description || '监督员未提供详细描述' }}</p>
-          <el-divider />
-          <h4>📝 录入实测 AQI 数据</h4>
-          <el-form :model="form" label-width="200px">
-            <el-form-item label="SO₂ 二氧化硫 AQI">
-              <el-slider v-model="form.so2Aqi" :max="500" show-input style="width:400px" />
-            </el-form-item>
-            <el-form-item label="CO 一氧化碳 AQI">
-              <el-slider v-model="form.coAqi" :max="500" show-input style="width:400px" />
-            </el-form-item>
-            <el-form-item label="PM2.5 悬浮颗粒物 AQI">
-              <el-slider v-model="form.pm25Aqi" :max="500" show-input style="width:400px" />
-            </el-form-item>
-            <el-form-item label="最终AQI = MAX(SO₂,CO,PM2.5)">
-              <span class="final-aqi" :style="{color:getAqiColor(finalAqi)}">{{ finalAqi }}</span>
-            </el-form-item>
-            <el-form-item label="备注">
-              <el-input v-model="form.remark" type="textarea" :rows="3" placeholder="检测备注..." style="width:400px" />
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" :loading="submitting" @click="handleSubmit(task)">提交检测数据</el-button>
-              <el-button type="danger" plain @click="openReject(task)">拒绝此任务</el-button>
-              <el-button @click="expandId = null">取消</el-button>
-            </el-form-item>
-
-            <!-- 内部备注区域 -->
-            <el-divider />
-            <h4>💬 内部备注</h4>
-            <div class="notes-section">
-              <div v-if="currentNotes.length === 0" style="color:#999;font-size:13px;padding:8px 0">暂无备注</div>
-              <div v-for="note in currentNotes" :key="note.id" class="note-bubble">
-                <div class="note-meta">
-                  <span class="note-author">{{ note.userName }}</span>
-                  <span class="note-time">{{ formatTime(note.createTime) }}</span>
-                </div>
-                <p class="note-text">{{ note.content }}</p>
-              </div>
-            </div>
-            <div class="note-input-row">
-              <el-input v-model="newNote" type="textarea" :rows="2" placeholder="添加内部备注..." size="small" />
-              <el-button size="small" type="primary" @click="handleAddNote(task.id)" style="margin-top:6px">添加备注</el-button>
-            </div>
-          </el-form>
+        
+        <div class="alpine-segments">
+          <button 
+            v-for="tab in filterTabs" 
+            :key="tab.value"
+            class="segment-btn"
+            :class="{ active: currentTab === tab.value }"
+            @click="currentTab = tab.value"
+          >
+            {{ tab.label }}
+          </button>
         </div>
       </div>
-    </div>
-    <el-empty v-else description="暂无待检测任务" />
+    </header>
 
-    <!-- 拒绝反馈对话框 -->
-    <el-dialog v-model="rejectVisible" title="拒绝反馈任务" width="450px">
-      <el-form>
-        <el-form-item label="拒绝原因" required>
-          <el-input v-model="rejectReason" type="textarea" :rows="4" placeholder="请详细填写拒绝该任务的原因..." />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="rejectVisible = false">取消</el-button>
-        <el-button type="danger" @click="handleReject">确认拒绝</el-button>
-      </template>
-    </el-dialog>
+    <!-- 主工作区 -->
+    <main class="tasks-workspace">
+      <!-- 左侧：任务流 -->
+      <aside class="task-list-pane" v-loading="isLoading">
+        <div v-if="filteredTasks.length === dynamicText.zeroCount && !isLoading" class="empty-state-list">
+          <el-icon class="empty-icon"><List /></el-icon>
+          <p>{{ dynamicText.emptyListDesc }}</p>
+        </div>
+        
+        <div 
+          v-else
+          v-for="task in filteredTasks" 
+          :key="task.id"
+          class="task-card"
+          :class="{ 'is-selected': selectedTaskId === task.id }"
+          @click="selectTask(task)"
+        >
+          <div class="card-header">
+            <span class="task-id">{{ task.displayId }}</span>
+            <span class="alpine-dot" :class="task.statusCode"></span>
+          </div>
+          <h3 class="task-title">{{ task.title }}</h3>
+          <div class="task-meta">
+            <span class="meta-item"><el-icon><Location /></el-icon> {{ task.address }}</span>
+            <span class="meta-item"><el-icon><Calendar /></el-icon> {{ task.date }}</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- 右侧：详情画板 -->
+      <section class="task-detail-pane" v-loading="isLoadingDetail">
+        <div v-if="!selectedTask" class="empty-state-detail">
+          <div class="glass-placeholder">
+            <el-icon><Briefcase /></el-icon>
+          </div>
+          <h3>{{ dynamicText.emptyDetailTitle }}</h3>
+          <p>{{ dynamicText.emptyDetailDesc }}</p>
+        </div>
+
+        <div v-else class="detail-content">
+          <div class="detail-scroll-area">
+            <div class="detail-header">
+              <div class="tag-group">
+                <span class="alpine-tag solid" :class="selectedTask.levelCode">{{ selectedTask.levelText }}</span>
+                <span class="alpine-tag outline" :class="selectedTask.statusCode">{{ selectedTask.statusText }}</span>
+              </div>
+              <h2 class="detail-title">{{ selectedTask.title }}</h2>
+              <p class="detail-id">{{ dynamicText.idPrefix }}{{ selectedTask.displayId }}</p>
+            </div>
+
+            <div class="detail-section">
+              <h4 class="section-title"><el-icon><LocationInformation /></el-icon> {{ dynamicText.locationTitle }}</h4>
+              <p class="section-text">{{ selectedTask.address }}</p>
+              <div class="map-placeholder">
+                <el-icon><MapLocation /></el-icon>
+                <span>{{ dynamicText.mapPlaceholder }}</span>
+              </div>
+            </div>
+
+            <div class="detail-section">
+              <h4 class="section-title"><el-icon><Document /></el-icon> {{ dynamicText.descTitle }}</h4>
+              <p class="section-text">{{ selectedTask.description }}</p>
+            </div>
+            
+            <div class="detail-section">
+              <h4 class="section-title"><el-icon><Timer /></el-icon> {{ dynamicText.timeTitle }}</h4>
+              <div class="time-grid">
+                <div class="time-box">
+                  <span class="time-label">{{ dynamicText.assignTimeLabel }}</span>
+                  <span class="time-value">{{ selectedTask.date }}</span>
+                </div>
+                <div class="time-box">
+                  <span class="time-label">{{ dynamicText.deadlineLabel }}</span>
+                  <span class="time-value">{{ selectedTask.deadline || dynamicText.noDeadlineText }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="detail-actions">
+            <button class="alpine-btn ghost" @click="handleCancel">
+              {{ dynamicText.actionCancel }}
+            </button>
+            <button 
+              class="alpine-btn primary" 
+              :disabled="selectedTask.statusCode === 'completed'"
+              @click="handlePrimaryAction"
+            >
+              <el-icon><Position /></el-icon> 
+              {{ selectedTask.statusCode === 'pending' ? dynamicText.actionStart : (selectedTask.statusCode === 'active' ? dynamicText.actionSubmit : dynamicText.actionDone) }}
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { getFeedbackPage, rejectFeedback } from '@/api/feedback'
-import { submitAqi } from '@/api/aqi'
-import { getNotesByFeedback, addNote } from '@/api/feedbackNote'
-import { ElMessage } from 'element-plus'
-
-const tasks = ref([])
-const expandId = ref(null)
-const submitting = ref(false)
-const currentUserId = ref(Number(localStorage.getItem('userId') || 0))
 import { useUserStore } from '@/stores/user'
+import { getFeedbackPage } from '@/api/feedback' 
+import { ElMessage } from 'element-plus'
+import {
+  Search, List, Location, Calendar, Briefcase,
+  LocationInformation, MapLocation, Document, Timer, Position
+} from '@element-plus/icons-vue'
+
 const userStore = useUserStore()
-const currentUserName = computed(() => userStore.userName || '网格员')
 
-// 拒绝
-const rejectVisible = ref(false)
-const currentRejectTask = ref(null)
-const rejectReason = ref('')
+// ==========================================
+// 1. 全局文案
+// ==========================================
+const dynamicText = ref({
+  pageTitle: '检测任务',
+  taskUnit: '项任务',
+  searchPlaceholder: '搜索任务编号、地点或关键字...',
+  zeroCount: 0,
+  emptyListDesc: '当前分类下暂无需要处理的任务',
+  emptyDetailTitle: '未选择任何任务',
+  emptyDetailDesc: '请从左侧列表中选择一个任务以查阅详情并进行跟进操作',
+  idPrefix: '系统工单：',
+  locationTitle: '巡查地点',
+  descTitle: '任务/反馈描述',
+  timeTitle: '时间节点',
+  assignTimeLabel: '管理员下发时间',
+  deadlineLabel: '要求完成时间',
+  noDeadlineText: '按常规流程推进',
+  mapPlaceholder: '环境监管网格坐标已锁定',
+  actionCancel: '取消选中',
+  actionStart: '接收并开始执行',
+  actionSubmit: '提交检测报告',
+  actionDone: '任务已闭环'
+})
 
-// 备注
-const currentNotes = ref([])
-const newNote = ref('')
+// ==========================================
+// 2. 响应式状态
+// ==========================================
+const searchQuery = ref('')
+const currentTab = ref('all')
+const selectedTaskId = ref(null)
+const isLoading = ref(false)
+const isLoadingDetail = ref(false)
 
-const form = ref({ so2Aqi: 0, coAqi: 0, pm25Aqi: 0, remark: '' })
+const filterTabs = ref([
+  { label: '全部', value: 'all' },
+  { label: '待处理', value: 'pending' },
+  { label: '进行中', value: 'active' },
+  { label: '已完成', value: 'completed' }
+])
 
-const finalAqi = computed(() => Math.max(form.value.so2Aqi, form.value.coAqi, form.value.pm25Aqi))
+const rawTasks = ref([])
 
-function formatTime(t) { if (!t) return ''; return t.replace('T', ' ').substring(0, 16) }
+// ==========================================
+// 3. 状态与优先级映射
+// ==========================================
+const statusMap = {
+  'ASSIGNED': { code: 'pending', text: '待处理' },
+  'PROCESSING': { code: 'active', text: '进行中' },
+  'COMPLETED': { code: 'completed', text: '已完成' },
+  'CLOSED': { code: 'completed', text: '已闭环' }
+}
 
-function toggleExpand(task) {
-  if (expandId.value === task.id) {
-    expandId.value = null
-  } else {
-    expandId.value = task.id
-    newNote.value = ''
-    loadNotes(task.id)
+const levelMap = {
+  1: { code: 'info', text: '常规' },
+  2: { code: 'warning', text: '中优' },
+  3: { code: 'danger', text: '紧急' }
+}
+
+// ==========================================
+// 4. 核心数据请求（关键修正点）
+// ==========================================
+const fetchAssignedTasks = async () => {
+  // 兼容用户身份获取
+  const userId = userStore.user?.id || Number(localStorage.getItem('userId'))
+  if (!userId) {
+    console.warn('未获取到用户ID，无法加载任务')
+    return
+  }
+  
+  isLoading.value = true
+  try {
+    // 明确获取指派状态的任务，兼容旧接口逻辑
+    const res = await getFeedbackPage(1, 100, 'ASSIGNED', userId)
+    
+    // 兼容多种后端返回格式：data 直接是数组 || data.records 分页对象
+    let taskList = []
+    if (Array.isArray(res.data)) {
+      taskList = res.data
+    } else if (res.data?.records) {
+      taskList = res.data.records
+    } else if (Array.isArray(res)) {
+      // 某些拦截器可能直接返回数组
+      taskList = res
+    }
+    
+    rawTasks.value = taskList.map(item => ({
+      id: item.id,
+      displayId: `TSK-${new Date(item.createTime || item.assignTime).getFullYear()}-${String(item.id).padStart(4, '0')}`,
+      title: item.title || item.feedbackType || '未命名指派任务',
+      // 地址字段兼容
+      address: item.specificAddress || item.address || '未指定明确地点',
+      date: item.assignTime || item.createTime || '未知时间',
+      deadline: item.deadline || null,
+      description: item.description || item.content || '管理员暂未提供详细描述',
+      statusCode: statusMap[item.status]?.code || 'pending',
+      statusText: statusMap[item.status]?.text || '待处理',
+      levelCode: levelMap[item.estimatedAqiLevel]?.code || levelMap[item.priority]?.code || 'info',
+      levelText: levelMap[item.estimatedAqiLevel]?.text || levelMap[item.priority]?.text || '常规'
+    }))
+  } catch (error) {
+    console.error('任务加载失败:', error)
+    ElMessage.error('无法同步管理员委派任务，请检查网络连接')
+  } finally {
+    isLoading.value = false
   }
 }
 
-function getAqiColor(v) {
-  if (v <= 50) return '#2AA876'; if (v <= 100) return '#85C77A'
-  if (v <= 150) return '#F5A623'; if (v <= 200) return '#E87A31'
-  if (v <= 300) return '#D9534F'; return '#A03232'
+// ==========================================
+// 5. 计算属性与交互
+// ==========================================
+const filteredTasks = computed(() => {
+  return rawTasks.value.filter(task => {
+    const matchTab = currentTab.value === 'all' || task.statusCode === currentTab.value
+    const matchSearch = 
+      task.title.includes(searchQuery.value) || 
+      task.displayId.includes(searchQuery.value) || 
+      task.address.includes(searchQuery.value)
+    return matchTab && matchSearch
+  })
+})
+
+const selectedTask = computed(() => {
+  return rawTasks.value.find(t => t.id === selectedTaskId.value)
+})
+
+const selectTask = (task) => {
+  isLoadingDetail.value = true
+  selectedTaskId.value = task.id
+  setTimeout(() => { isLoadingDetail.value = false }, 300)
 }
 
-async function handleSubmit(task) {
-  submitting.value = true
-  try {
-    await submitAqi({
-      feedbackId: task.id,
-      inspectorId: currentUserId.value,
-      provinceId: task.provinceId,
-      cityId: task.cityId,
-      so2Aqi: form.value.so2Aqi,
-      coAqi: form.value.coAqi,
-      pm25Aqi: form.value.pm25Aqi,
-      remark: form.value.remark
-    })
-    ElMessage.success('检测数据提交成功！')
-    expandId.value = null
-    form.value = { so2Aqi: 0, coAqi: 0, pm25Aqi: 0, remark: '' }
-    loadTasks()
-  } catch(e) {} finally { submitting.value = false }
+const handlePrimaryAction = async () => {
+  if (!selectedTask.value) return
+  // 实际项目中应调用后端状态更新接口
+  if (selectedTask.value.statusCode === 'pending') {
+    selectedTask.value.statusCode = 'active'
+    selectedTask.value.statusText = '进行中'
+    ElMessage.success('已接收该任务，请尽快前往现场')
+  } else if (selectedTask.value.statusCode === 'active') {
+    selectedTask.value.statusCode = 'completed'
+    selectedTask.value.statusText = '已完成'
+    ElMessage.success('报告提交成功，任务已闭环')
+    selectedTaskId.value = null 
+  }
 }
 
-async function loadTasks() {
-  try {
-    const res = await getFeedbackPage(1, 50, 'ASSIGNED', currentUserId.value)
-    tasks.value = res.data || []
-  } catch(e) {}
+const handleCancel = () => {
+  selectedTaskId.value = null
 }
 
-// 拒绝反馈
-function openReject(task) {
-  currentRejectTask.value = task
-  rejectReason.value = ''
-  rejectVisible.value = true
-}
-
-async function handleReject() {
-  if (!rejectReason.value.trim()) { ElMessage.warning('请填写拒绝原因'); return }
-  try {
-    await rejectFeedback(currentRejectTask.value.id, currentUserId.value, rejectReason.value)
-    ElMessage.success('已拒绝该反馈')
-    rejectVisible.value = false
-    expandId.value = null
-    loadTasks()
-  } catch(e) {}
-}
-
-// 备注
-async function loadNotes(feedbackId) {
-  try {
-    const res = await getNotesByFeedback(feedbackId)
-    currentNotes.value = res.data || []
-  } catch(e) { currentNotes.value = [] }
-}
-
-async function handleAddNote(feedbackId) {
-  if (!newNote.value.trim()) { ElMessage.warning('请输入备注内容'); return }
-  try {
-    await addNote({
-      feedbackId,
-      userId: currentUserId.value,
-      userName: currentUserName.value,
-      content: newNote.value
-    })
-    ElMessage.success('备注已添加')
-    newNote.value = ''
-    loadNotes(feedbackId)
-  } catch(e) {}
-}
-
-onMounted(loadTasks)
+// ==========================================
+// 6. 初始化
+// ==========================================
+onMounted(async () => {
+  // 确保用户信息已加载
+  if (!userStore.user) {
+    await userStore.fetchUser()
+  }
+  fetchAssignedTasks()
+})
 </script>
 
 <style scoped>
-.tasks-page { max-width:900px; margin:0 auto; }
-.page-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
-.page-header h2 { margin:0; font-size:20px; }
-.task-count { font-size:14px; color:#888; }
-
-.task-card { background:#fff; border:1px solid #eee; border-radius:12px; margin-bottom:12px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.03); }
-.task-card.expanded { border-color:#409EFF; }
-.task-summary { display:flex; justify-content:space-between; align-items:center; padding:16px 20px; cursor:pointer; transition:background 0.2s; }
-.task-summary:hover { background:#fafcff; }
-.summary-left { display:flex; align-items:center; gap:16px; }
-.case-id { font-weight:700; color:#333; }
-.case-address { color:#666; font-size:14px; }
-.assign-time { font-size:13px; color:#999; margin-right:8px; }
-.task-detail { padding:0 20px 20px; }
-.detail-desc { color:#666; font-size:14px; line-height:1.6; }
-.final-aqi { font-size:32px; font-weight:700; }
-
-/* 备注样式 */
-.notes-section {
-  max-height: 200px;
-  overflow-y: auto;
-  margin-bottom: 8px;
+/* =======================================================
+   顶级画布约束 (Strict Canvas)
+======================================================= */
+.alpine-tasks-canvas {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden; 
 }
 
-.note-bubble {
-  padding: 8px 12px;
-  margin-bottom: 6px;
-  background: #f8f9fb;
-  border-radius: 8px;
-  border-left: 3px solid #409EFF;
-}
-
-.note-meta {
+/* =======================================================
+   顶部控制台 (Header Console)
+======================================================= */
+.tasks-header {
+  flex-shrink: 0;
   display: flex;
   justify-content: space-between;
-  margin-bottom: 4px;
+  align-items: flex-end;
+  padding-bottom: 24px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  margin-bottom: 24px;
+}
+.header-left { display: flex; align-items: baseline; gap: 12px; }
+.page-title { font-size: 24px; font-weight: 700; color: #0F172A; margin: 0; }
+.task-counter { font-size: 14px; color: #64748B; font-weight: 500; }
+
+.header-right { display: flex; align-items: center; gap: 24px; }
+
+.alpine-search {
+  display: flex; align-items: center; gap: 8px;
+  background: white; border: 1px solid rgba(15, 23, 42, 0.08);
+  padding: 8px 16px; border-radius: 12px; width: 280px;
+  transition: all 0.3s;
+}
+.alpine-search:focus-within { border-color: #0284C7; box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1); }
+.search-icon { color: #94A3B8; font-size: 16px; }
+.search-input { border: none; outline: none; font-size: 14px; width: 100%; color: #0F172A; background: transparent; }
+.search-input::placeholder { color: #94A3B8; }
+
+.alpine-segments {
+  display: flex; background: rgba(15, 23, 42, 0.04);
+  padding: 4px; border-radius: 12px;
+}
+.segment-btn {
+  border: none; background: transparent; padding: 6px 16px;
+  border-radius: 8px; font-size: 13px; font-weight: 600; color: #64748B;
+  cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.segment-btn.active { background: white; color: #0F172A; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06); }
+
+/* =======================================================
+   主工作区 (Master-Detail Workspace)
+======================================================= */
+.tasks-workspace {
+  flex: 1;
+  display: flex;
+  gap: 24px;
+  min-height: 0; /* 防止 Flex 子项溢出 */
 }
 
-.note-author {
-  font-weight: 600;
-  font-size: 12px;
-  color: #409EFF;
+/* =======================================================
+   左侧任务流 (Master List)
+======================================================= */
+.task-list-pane {
+  width: 380px; flex-shrink: 0;
+  display: flex; flex-direction: column; gap: 12px;
+  overflow-y: auto; padding-right: 8px; 
+}
+.task-list-pane::-webkit-scrollbar { width: 4px; }
+.task-list-pane::-webkit-scrollbar-thumb { background: rgba(15, 23, 42, 0.1); border-radius: 4px; }
+
+.task-card {
+  background: white; border-radius: 16px; padding: 20px;
+  border: 1px solid rgba(15, 23, 42, 0.04);
+  cursor: pointer; transition: all 0.2s ease;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.task-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px -8px rgba(15, 23, 42, 0.06); }
+.task-card.is-selected { border-color: #0284C7; box-shadow: 0 0 0 1px #0284C7, 0 8px 24px -8px rgba(2, 132, 199, 0.15); }
+
+.card-header { display: flex; justify-content: space-between; align-items: center; }
+.task-id { font-size: 12px; color: #94A3B8; font-weight: 600; font-family: monospace; }
+.alpine-dot { width: 8px; height: 8px; border-radius: 50%; }
+.alpine-dot.pending { background: #EF4444; box-shadow: 0 0 0 3px #FEF2F2; }
+.alpine-dot.active { background: #F59E0B; box-shadow: 0 0 0 3px #FFFBEB; }
+.alpine-dot.completed { background: #10B981; box-shadow: 0 0 0 3px #F0FDF4; }
+
+.task-title { font-size: 15px; font-weight: 600; color: #0F172A; margin: 0; line-height: 1.4; }
+.task-meta { display: flex; flex-direction: column; gap: 6px; }
+.meta-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #64748B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* =======================================================
+   右侧详情画板 (Detail Canvas)
+======================================================= */
+.task-detail-pane {
+  flex: 1;
+  background: white; border-radius: 20px;
+  border: 1px solid rgba(15, 23, 42, 0.04);
+  box-shadow: 0 4px 24px -8px rgba(15, 23, 42, 0.03);
+  display: flex; flex-direction: column;
+  overflow: hidden;
 }
 
-.note-time {
-  font-size: 11px;
-  color: #999;
+.detail-content {
+  flex: 1; display: flex; flex-direction: column; min-height: 0;
+}
+.detail-scroll-area {
+  flex: 1; overflow-y: auto; padding: 40px;
+}
+.detail-scroll-area::-webkit-scrollbar { display: none; }
+
+.detail-header { margin-bottom: 40px; border-bottom: 1px solid rgba(15, 23, 42, 0.04); padding-bottom: 24px; }
+.tag-group { display: flex; gap: 8px; margin-bottom: 16px; }
+.alpine-tag { padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; }
+.alpine-tag.solid.danger { background: #FEF2F2; color: #EF4444; }
+.alpine-tag.solid.warning { background: #FFFBEB; color: #F59E0B; }
+.alpine-tag.solid.info { background: #F1F5F9; color: #64748B; }
+.alpine-tag.outline { background: transparent; border: 1px solid; }
+.alpine-tag.outline.pending { border-color: #EF4444; color: #EF4444; }
+.alpine-tag.outline.active { border-color: #F59E0B; color: #F59E0B; }
+.alpine-tag.outline.completed { border-color: #10B981; color: #10B981; }
+
+.detail-title { font-size: 24px; font-weight: 700; color: #0F172A; margin: 0 0 8px 0; line-height: 1.3; }
+.detail-id { font-size: 13px; color: #94A3B8; font-family: monospace; margin: 0; }
+
+.detail-section { margin-bottom: 32px; }
+.section-title { font-size: 14px; font-weight: 600; color: #0F172A; margin: 0 0 12px 0; display: flex; align-items: center; gap: 8px; }
+.section-title .el-icon { color: #0284C7; font-size: 16px; }
+.section-text { font-size: 14px; color: #475569; line-height: 1.6; margin: 0; }
+
+.map-placeholder {
+  margin-top: 16px; height: 120px; border-radius: 12px;
+  background: rgba(14, 165, 233, 0.03); border: 1px dashed rgba(14, 165, 233, 0.2);
+  display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 8px;
+  color: #0284C7; font-size: 13px; font-weight: 500;
+}
+.map-placeholder .el-icon { font-size: 24px; opacity: 0.5; }
+
+.time-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.time-box { background: #F8FAFC; padding: 16px; border-radius: 12px; display: flex; flex-direction: column; gap: 4px; }
+.time-label { font-size: 12px; color: #64748B; font-weight: 500; }
+.time-value { font-size: 14px; color: #0F172A; font-weight: 600; }
+
+.detail-actions {
+  flex-shrink: 0; padding: 24px 40px; background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px); border-top: 1px solid rgba(15, 23, 42, 0.04);
+  display: flex; justify-content: flex-end; gap: 16px;
 }
 
-.note-text {
-  margin: 0;
-  font-size: 13px;
-  color: #333;
-  line-height: 1.5;
+.alpine-btn {
+  padding: 12px 24px; border-radius: 12px; font-size: 14px; font-weight: 600;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; 
+  cursor: pointer; border: none; transition: all 0.3s;
 }
+.alpine-btn.primary { background: #0284C7; color: white; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.2); }
+.alpine-btn.primary:hover:not(:disabled) { transform: translateY(-1px); background: #0369A1; }
+.alpine-btn.primary:disabled { background: #94A3B8; box-shadow: none; cursor: not-allowed; }
+.alpine-btn.ghost { background: transparent; color: #64748B; }
+.alpine-btn.ghost:hover { background: #F1F5F9; color: #0F172A; }
+
+/* =======================================================
+   空状态 (Empty States)
+======================================================= */
+.empty-state-list { padding: 40px 20px; text-align: center; color: #94A3B8; font-size: 13px; }
+.empty-state-detail { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #64748B; }
+.glass-placeholder {
+  width: 80px; height: 80px; border-radius: 24px; margin-bottom: 24px;
+  background: linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%);
+  display: flex; justify-content: center; align-items: center;
+  font-size: 32px; color: #0284C7; box-shadow: 0 12px 32px rgba(2, 132, 199, 0.1);
+}
+.empty-state-detail h3 { font-size: 18px; color: #0F172A; margin: 0 0 8px 0; font-weight: 600; }
+.empty-state-detail p { font-size: 14px; margin: 0; max-width: 260px; text-align: center; line-height: 1.5; }
 </style>

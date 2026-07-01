@@ -36,7 +36,7 @@
     <!-- 污染热点地图 -->
     <div class="map-section">
       <h3>🗺️ 污染热点地图 — 全国AQI实时分布</h3>
-      <MapView style="height:520px" />
+      <MapView style="height:620px" />
     </div>
 
     <div class="charts-grid">

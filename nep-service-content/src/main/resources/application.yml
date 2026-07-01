@@ -4,6 +4,8 @@ server:
 spring:
   application:
     name: nep-service-content
+  config:
+    import: "optional:nacos:"
   datasource:
     username: root
     password: 1234

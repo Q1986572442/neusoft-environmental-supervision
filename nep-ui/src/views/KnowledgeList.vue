@@ -117,17 +117,27 @@ const searchQuery = ref('')
 // 辅助方法：从附件URL获取文件后缀标签
 function getFileFormat(rawUrl) {
   if (!rawUrl) return 'DOC'
-  // 支持 JSON 数组 → 取第一个附件展示
+  
   let url = rawUrl
   try {
     const arr = JSON.parse(rawUrl)
-    if (Array.isArray(arr) && arr.length > 0) url = arr[0]
-  } catch { /* 单个URL直接用 */ }
+    if (Array.isArray(arr) && arr.length > 0) {
+      // 兼容如果数组元素是对象的情况 (如：[{ url: 'http...' }])
+      url = typeof arr[0] === 'object' && arr[0].url ? arr[0].url : arr[0]
+    }
+  } catch { 
+    /* 单个URL直接用 */ 
+  }
+  
+  // 防御性判断：确保最后拿到的 url 必须是字符串，如果不是则降级返回默认值
+  if (typeof url !== 'string') return 'DOC'
+
   const ext = url.split('.').pop()?.toLowerCase() || ''
   if (['pdf'].includes(ext)) return 'PDF'
   if (['xls', 'xlsx'].includes(ext)) return 'XLS'
   if (['doc', 'docx'].includes(ext)) return 'DOC'
   if (['zip', 'rar', '7z'].includes(ext)) return 'ZIP'
+  
   return 'DOC'
 }
 

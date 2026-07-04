@@ -19,9 +19,10 @@
       </div>
 
       <div class="user-profile-card">
-        <el-avatar :size="48" class="profile-avatar" :src="userStore.user?.avatar">
+        <el-avatar :size="48" class="profile-avatar" :src="userStore.user?.avatar" fit="cover" shape="circle">
           <el-icon v-if="!userStore.user?.avatar"><UserFilled /></el-icon>
         </el-avatar>
+        
         <div class="profile-info">
           <span class="profile-name">{{ userName }}</span>
           <span class="profile-role">
@@ -255,10 +256,48 @@ onUnmounted(() => {
   padding: 16px; border-radius: 16px; margin-bottom: 40px;
   box-shadow: 0 4px 16px -4px rgba(15, 23, 42, 0.03);
 }
-.profile-avatar { background: #E2E8F0; color: #64748B; }
-.profile-info { flex: 1; display: flex; flex-direction: column; gap: 4px; }
-.profile-name { font-size: 15px; font-weight: 600; }
-.profile-role { font-size: 12px; color: #64748B; display: flex; align-items: center; gap: 4px; }
+
+/* ✨✨ 强制圆形头像：锁死大小，绝对不压缩 ✨✨ */
+.profile-avatar { 
+  background: #E2E8F0; 
+  color: #64748B; 
+  flex-shrink: 0 !important; /* 严禁头像被挤压 */
+  width: 48px !important;    
+  height: 48px !important;   
+  border-radius: 50% !important; 
+  overflow: hidden !important; 
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.profile-avatar :deep(img) {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important; /* 保证长方形图片也能完美居中裁剪成圆 */
+}
+
+/* 👇👇 恢复名字的正常展示状态 👇👇 */
+.profile-info { 
+  flex: 1; 
+  display: flex; 
+  flex-direction: column; 
+  gap: 4px; 
+}
+.profile-name { 
+  font-size: 15px; 
+  font-weight: 600; 
+  word-break: break-word; /* 允许自然换行，移除强制截断，显示完整名字 */
+  line-height: 1.2;
+}
+.profile-role { 
+  font-size: 12px; 
+  color: #64748B; 
+  display: flex; 
+  align-items: center; 
+  gap: 4px; 
+  line-height: 1.2;
+}
 
 .navigation-menu { display: flex; flex-direction: column; gap: 6px; }
 .nav-group-title { font-size: 11px; font-weight: 600; color: #94A3B8; text-transform: uppercase; letter-spacing: 1px; margin: 16px 0 8px 12px; }
